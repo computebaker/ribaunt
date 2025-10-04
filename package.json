@@ -1,6 +1,6 @@
 {
   "name": "@ribaunt/tools",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Ribaunt PoW CAPTCHA tools",
   "homepage": "https://github.com/computebaker/ribaunt#readme",
   "bugs": {
