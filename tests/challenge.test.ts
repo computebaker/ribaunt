@@ -3,7 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 
 describe('test challenge flow', () => {
     it('creates the default number of JWT challenge tokens', () => {
-        const tokens = createChallenge();
+        const tokens = createChallenge(4,3);
         console.log('createChallenge (default amount) =>', tokens);
 
         expect(Array.isArray(tokens)).toBe(true);
