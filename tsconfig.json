@@ -6,7 +6,7 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "target": "es2020",
-    "lib": ["esnext"],
+    "lib": ["esnext", "dom"],
     "types": ["node"],
     "esModuleInterop": true,
     "sourceMap": true,
@@ -25,5 +25,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true
   },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["tests/*", "node_modules", "dist" ]
 }

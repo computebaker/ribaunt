@@ -1,6 +1,6 @@
 {
   "name": "@ribaunt/tools",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Ribaunt PoW CAPTCHA tools",
   "homepage": "https://github.com/computebaker/ribaunt#readme",
   "bugs": {
@@ -12,6 +12,10 @@
     ".": {
       "import": "./dist/index.js",
       "require": "./dist/cjs/index.cjs"
+    },
+    "./widget": {
+      "import": "./dist/widget-browser.js",
+      "types": "./dist/widget-browser.d.ts"
     }
   },
   "repository": {
