@@ -439,3 +439,20 @@ if (typeof window !== 'undefined' && !customElements.get('ribaunt-widget')) {
 
 // Export for use in TypeScript
 export default RibauntWidget;
+
+// Types declaration for JSX
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'ribaunt-widget': {
+        id?: string;
+        'challenge-endpoint'?: string;
+        'verify-endpoint'?: string;
+        'show-warning'?: string;
+        'warning-message'?: string;
+        // allow other props (className, style, aria-*, etc.)
+        [key: string]: any;
+      };
+    }
+  }
+}
