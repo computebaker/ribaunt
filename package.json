@@ -1,6 +1,6 @@
 {
   "name": "ribaunt",
-  "version": "0.0.6",
+  "version": "0.1.0",
   "description": "A PoW CAPTCHA library that provides stateless and secure user verification",
   "homepage": "https://ribaunt.com",
   "bugs": {
@@ -14,8 +14,14 @@
       "require": "./dist/cjs/index.cjs"
     },
     "./widget": {
-      "import": "./dist/widget-browser.js",
+      "client": "./dist/widget-browser.js",
+      "default": "./dist/widget-browser.js",
       "types": "./dist/widget-browser.d.ts"
+    },
+    "./widget-react": {
+      "client": "./dist/widget-react.js",
+      "default": "./dist/widget-react.js",
+      "types": "./dist/widget-react.d.ts"
     }
   },
   "repository": {
@@ -33,10 +39,26 @@
     "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.6.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "dotenv": "^17.2.3",
     "jest": "^30.2.0",
-    "ts-jest": "^29.4.4",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "ts-jest": "^29.4.6",
     "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.2"

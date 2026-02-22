@@ -198,7 +198,7 @@ const RIBAUNT_LOGO = `
   </svg>
 `;
 
-type WidgetState = 'initial' | 'verifying' | 'done' | 'error';
+export type WidgetState = 'initial' | 'verifying' | 'done' | 'error';
 
 export class RibauntWidget extends HTMLElement {
   private shadow: ShadowRoot;
@@ -432,26 +432,34 @@ export class RibauntWidget extends HTMLElement {
   }
 }
 
+export interface RibauntWidgetElement extends HTMLElement {
+  reset(): void;
+  getState(): WidgetState;
+  startVerification(): void;
+}
+
 // Register the custom element
-if (typeof window !== 'undefined' && !customElements.get('ribaunt-widget')) {
+if (typeof window !== 'undefined' && typeof customElements !== 'undefined' && !customElements.get('ribaunt-widget')) {
   customElements.define('ribaunt-widget', RibauntWidget);
 }
 
 // Export for use in TypeScript
 export default RibauntWidget;
 
-// Types declaration for JSX
+// Types declaration for DOM and JSX
 declare global {
+  interface HTMLElementTagNameMap {
+    'ribaunt-widget': RibauntWidgetElement;
+  }
+
   namespace JSX {
     interface IntrinsicElements {
-      'ribaunt-widget': {
-        id?: string;
+      'ribaunt-widget': import('react').DetailedHTMLProps<import('react').HTMLAttributes<RibauntWidgetElement>, RibauntWidgetElement> & {
         'challenge-endpoint'?: string;
         'verify-endpoint'?: string;
-        'show-warning'?: string;
+        'show-warning'?: string | boolean;
         'warning-message'?: string;
-        // allow other props (className, style, aria-*, etc.)
-        [key: string]: any;
+        disabled?: string | boolean;
       };
     }
   }
