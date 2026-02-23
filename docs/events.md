@@ -1,6 +1,8 @@
 # Events Reference
 
 The Ribaunt CAPTCHA widget emits three standard DOM events (`CustomEvent`) that notify you of the lifecycle and results.
+It also emits an initial `state-change` event immediately after the widget mounts with one of these states:
+`initial`, `verifying`, `done`, `error`.
 
 ## 1. `verify`
 Dispatched when the solver successfully solves all challenges and the server endpoint verifies it (if `verify-endpoint` is specified). 
@@ -55,12 +57,14 @@ widget.addEventListener('state-change', (e) => {
 ```
 
 ## Listening in React
-If you use the React wrapper (`ribaunt/widget-react`), you get built-in strongly-typed callback props:
+If you use the React wrapper (`ribaunt/widget-react`), you get built-in strongly-typed callback props, plus a ready hook:
 
 ```tsx
 <RibauntWidget
   onVerify={(detail) => console.log('Solutions:', detail.solutions)}
   onError={(detail) => console.error('Error:', detail.error)}
   onStateChange={(detail) => console.log('State:', detail.state)}
+  onReady={(detail) => console.log('Ready state:', detail.state)}
+  onEvent={(type, detail) => console.log('Event:', type, detail)}
 />
 ```

@@ -72,6 +72,7 @@ export default function MyForm() {
         challengeEndpoint="/api/captcha/challenge"
         verifyEndpoint="/api/captcha/verify"
         onVerify={() => console.log('User verified!')}
+        onReady={(detail) => console.log('Widget ready:', detail.state)}
       />
       <button type="submit">Submit</button>
     </form>

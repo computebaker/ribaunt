@@ -27,6 +27,14 @@ export default function MyPage() {
     console.log('Current widget state:', detail.state);
   };
 
+  const handleReady = (detail: { state: string }) => {
+    console.log('Widget ready with state:', detail.state);
+  };
+
+  const handleEvent = (type: string, detail: unknown) => {
+    console.log('Widget event:', type, detail);
+  };
+
   return (
     <form>
       <RibauntWidget
@@ -37,6 +45,8 @@ export default function MyPage() {
         onVerify={handleVerify}
         onError={handleError}
         onStateChange={handleStateChange}
+        onReady={handleReady}
+        onEvent={handleEvent}
       />
       <button type="submit" onClick={() => widgetRef.current?.startVerification()}>
         Submit
@@ -87,4 +97,5 @@ export async function POST(req: Request) {
 
 - **Always use `'use client'`**: The component needs to render in the browser.
 - **Do not wrap in `next/dynamic`**: `ribaunt/widget-react` already handles dynamic importing internally, making your code cleaner.
+- **Ready & initial state**: `onReady` fires once after the widget is mounted. `onStateChange` always fires at least once after mount with the current state.
 - **Environment Variables**: Make sure your `RIBAUNT_SECRET` is defined in `.env.local` but *do not* prefix it with `NEXT_PUBLIC_` since it must stay on the server.

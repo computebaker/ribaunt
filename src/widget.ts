@@ -229,6 +229,7 @@ export class RibauntWidget extends HTMLElement {
   connectedCallback() {
     this.render();
     this.attachEventListeners();
+    this.dispatchStateChange();
   }
 
   disconnectedCallback() {
@@ -321,6 +322,10 @@ export class RibauntWidget extends HTMLElement {
       this.messageElement.textContent = this.getMessage();
     }
 
+    this.dispatchStateChange();
+  }
+
+  private dispatchStateChange() {
     // Dispatch state change event
     this.dispatchEvent(
       new CustomEvent('state-change', {

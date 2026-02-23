@@ -5,6 +5,7 @@ If you are using Vite, Create React App, or another React framework (that doesn'
 ## Method 1: Using the React Wrapper (Recommended)
 
 Our React wrapper handles event binding cleanly and exposes a `ref` handle to easily reset or trigger verification.
+It also guarantees a `state-change` callback after mount, plus an explicit ready hook.
 
 ```tsx
 import React, { useRef } from 'react';
@@ -25,6 +26,14 @@ export default function MyReactApp() {
     console.log('Current widget state:', detail.state);
   };
 
+  const handleReady = (detail) => {
+    console.log('Widget ready with state:', detail.state);
+  };
+
+  const handleEvent = (type, detail) => {
+    console.log('Widget event:', type, detail);
+  };
+
   return (
     <form>
       <RibauntWidget
@@ -34,6 +43,8 @@ export default function MyReactApp() {
         onVerify={handleVerify}
         onError={handleError}
         onStateChange={handleStateChange}
+        onReady={handleReady}
+        onEvent={handleEvent}
       />
       <button type="button" onClick={() => widgetRef.current?.startVerification()}>
         Verify Manually
