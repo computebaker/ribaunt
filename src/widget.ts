@@ -53,6 +53,23 @@ const WIDGET_STYLES = `
     color: var(--ribaunt-color, #212121);
   }
 
+  :host([disabled]) .captcha {
+    cursor: not-allowed;
+    opacity: 0.72;
+  }
+
+  :host([disabled]) .captcha:hover {
+    filter: none;
+  }
+
+  :host([disabled]) .captcha[data-state=verifying] {
+    cursor: progress;
+  }
+
+  :host([disabled]) .captcha[data-state=done] {
+    cursor: default;
+  }
+
   .captcha:hover {
     filter: brightness(98%);
   }
@@ -127,19 +144,6 @@ const WIDGET_STYLES = `
     background-size: cover;
   }
 
-  /* Disabled State */
-  .captcha[disabled] {
-    cursor: not-allowed;
-  }
-
-  .captcha[disabled][data-state=verifying] {
-    cursor: progress;
-  }
-
-  .captcha[disabled][data-state=done] {
-    cursor: default;
-  }
-
   /* Logo */
   .logo {
     position: absolute;
@@ -208,6 +212,7 @@ export class RibauntWidget extends HTMLElement {
   private checkboxElement: HTMLDivElement | null = null;
   private messageElement: HTMLParagraphElement | null = null;
   private warningElement: HTMLDivElement | null = null;
+  private logoElement: HTMLAnchorElement | null = null;
 
   static get observedAttributes() {
     return [
@@ -224,11 +229,11 @@ export class RibauntWidget extends HTMLElement {
     this.shadow = this.attachShadow({ mode: 'open' });
     this.handleClick = this.handleClick.bind(this);
     this.handleKeyPress = this.handleKeyPress.bind(this);
+    this.handleLogoClick = this.handleLogoClick.bind(this);
   }
 
   connectedCallback() {
     this.render();
-    this.attachEventListeners();
     this.dispatchStateChange();
   }
 
@@ -243,14 +248,17 @@ export class RibauntWidget extends HTMLElement {
   }
 
   private render() {
+    this.removeEventListeners();
+
     const showWarning = this.hasAttribute('show-warning') && this.getAttribute('show-warning') !== 'false';
     const warningMessage = this.getAttribute('warning-message') || 'Enable WASM for significantly faster solving';
+    const disabled = this.isDisabled();
 
     this.shadow.innerHTML = `
       <style>${WIDGET_STYLES}</style>
       <div>
         ${showWarning ? `<div class="warning ${showWarning ? 'visible' : ''}">${warningMessage}</div>` : ''}
-        <div class="captcha" data-state="${this.state}" role="button" tabindex="0" aria-label="${this.getMessage()}">
+        <div class="captcha" data-state="${this.state}" role="button" tabindex="${disabled ? '-1' : '0'}" aria-disabled="${disabled}" aria-label="${this.getMessage()}">
           <div class="checkbox"></div>
           <p>${this.getMessage()}</p>
           <a class="logo" href="https://ribaunt.com" target="_blank" rel="noopener noreferrer" aria-label="Powered by Ribaunt">
@@ -264,6 +272,7 @@ export class RibauntWidget extends HTMLElement {
     this.checkboxElement = this.shadow.querySelector('.checkbox');
     this.messageElement = this.shadow.querySelector('p');
     this.warningElement = this.shadow.querySelector('.warning');
+    this.logoElement = this.shadow.querySelector('.logo');
 
     // Update progress CSS variable if verifying
     if (this.state === 'verifying' && this.captchaElement) {
@@ -278,6 +287,9 @@ export class RibauntWidget extends HTMLElement {
       this.captchaElement.addEventListener('click', this.handleClick);
       this.captchaElement.addEventListener('keypress', this.handleKeyPress);
     }
+    if (this.logoElement) {
+      this.logoElement.addEventListener('click', this.handleLogoClick);
+    }
   }
 
   private removeEventListeners() {
@@ -285,9 +297,17 @@ export class RibauntWidget extends HTMLElement {
       this.captchaElement.removeEventListener('click', this.handleClick);
       this.captchaElement.removeEventListener('keypress', this.handleKeyPress);
     }
+    if (this.logoElement) {
+      this.logoElement.removeEventListener('click', this.handleLogoClick);
+    }
+  }
+
+  private handleLogoClick(event: MouseEvent) {
+    event.stopPropagation();
   }
 
   private handleClick() {
+    if (this.isDisabled()) return;
     if (this.state !== 'initial' && this.state !== 'error') return;
     this.verify();
   }
@@ -312,11 +332,17 @@ export class RibauntWidget extends HTMLElement {
     }
   }
 
+  private isDisabled(): boolean {
+    return this.hasAttribute('disabled') && this.getAttribute('disabled') !== 'false';
+  }
+
   private setState(newState: WidgetState) {
     this.state = newState;
     if (this.captchaElement) {
       this.captchaElement.setAttribute('data-state', this.state);
       this.captchaElement.setAttribute('aria-label', this.getMessage());
+      this.captchaElement.tabIndex = this.isDisabled() ? -1 : 0;
+      this.captchaElement.setAttribute('aria-disabled', String(this.isDisabled()));
     }
     if (this.messageElement) {
       this.messageElement.textContent = this.getMessage();
@@ -431,7 +457,7 @@ export class RibauntWidget extends HTMLElement {
    * Public API: Programmatically trigger verification
    */
   startVerification() {
-    if (this.state === 'initial' || this.state === 'error') {
+    if (!this.isDisabled() && (this.state === 'initial' || this.state === 'error')) {
       this.verify();
     }
   }

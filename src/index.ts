@@ -1,12 +1,6 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
-const secret: string = process.env.RIBAUNT_SECRET!;
-
-if (!secret) {
-  throw new Error('RIBAUNT_SECRET environment variable is not set!');
-}
-
 interface ChallengeTokenPayload {
   challenge: string;
   difficulty: number;
@@ -33,8 +27,18 @@ function createChallengePayload(difficulty: number, ttlSeconds: number): Challen
   };
 }
 
+function getSecret(): string {
+  const secret = process.env.RIBAUNT_SECRET;
+
+  if (!secret) {
+    throw new Error('RIBAUNT_SECRET environment variable is not set!');
+  }
+
+  return secret;
+}
+
 function signChallenge(payload: ChallengeTokenPayload): ChallengeToken {
-  return jwt.sign(payload, secret);
+  return jwt.sign(payload, getSecret());
 }
 
 function assertValidAmount(amount: number): number {
@@ -45,6 +49,32 @@ function assertValidAmount(amount: number): number {
   const normalized = Math.floor(amount);
   if (normalized < 1) {
     throw new Error('Challenge amount must be at least 1');
+  }
+
+  return normalized;
+}
+
+function assertValidDifficulty(difficulty: number): number {
+  if (!Number.isFinite(difficulty)) {
+    throw new Error('Challenge difficulty must be a finite number');
+  }
+
+  const normalized = Math.floor(difficulty);
+  if (normalized < 1) {
+    throw new Error('Challenge difficulty must be at least 1');
+  }
+
+  return normalized;
+}
+
+function assertValidTtl(ttlSeconds: number): number {
+  if (!Number.isFinite(ttlSeconds)) {
+    throw new Error('Challenge TTL must be a finite number');
+  }
+
+  const normalized = Math.floor(ttlSeconds);
+  if (normalized < 1) {
+    throw new Error('Challenge TTL must be at least 1 second');
   }
 
   return normalized;
@@ -68,9 +98,14 @@ export function createChallenge(
   amount: number = 4,
   ttlSeconds: number = 30
 ): ChallengeToken[] {
+  const normalizedDifficulty = assertValidDifficulty(difficulty);
   const normalizedAmount = assertValidAmount(amount);
+  const normalizedTtl = assertValidTtl(ttlSeconds);
 
-  const challenges = Array.from({ length: normalizedAmount }, () => createSingleChallenge(difficulty, ttlSeconds));
+  const challenges = Array.from(
+    { length: normalizedAmount },
+    () => createSingleChallenge(normalizedDifficulty, normalizedTtl)
+  );
   return challenges;
 }
 
@@ -106,7 +141,7 @@ function verifySingleSolution(token: ChallengeToken, nonce: number | string | un
   }
 
   try {
-    const payload = jwt.verify(token, secret) as ChallengeTokenPayload;
+    const payload = jwt.verify(token, getSecret()) as ChallengeTokenPayload;
 
     const now = Math.floor(Date.now() / 1000);
     if (payload.expires < now) return false;

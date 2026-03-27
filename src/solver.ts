@@ -20,8 +20,14 @@ function decodeJWT(token: string): ChallengePayload | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3 || !parts[1]) return null;
-    
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+
+    const normalizedPayload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const paddedPayload = normalizedPayload.padEnd(
+      normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
+      '='
+    );
+
+    const payload = JSON.parse(atob(paddedPayload));
     return payload as ChallengePayload;
   } catch {
     return null;
@@ -32,6 +38,14 @@ function decodeJWT(token: string): ChallengePayload | null {
  * SHA-256 hash using Web Crypto API
  */
 async function sha256(message: string): Promise<string> {
+  if (typeof TextEncoder === 'undefined') {
+    throw new Error('TextEncoder is unavailable in this browser environment');
+  }
+
+  if (!globalThis.crypto?.subtle) {
+    throw new Error('Web Crypto API is unavailable. Use HTTPS or localhost.');
+  }
+
   const msgBuffer = new TextEncoder().encode(message);
   const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -43,30 +57,26 @@ async function sha256(message: string): Promise<string> {
  * Solve a single challenge token (browser-compatible)
  */
 export async function solveSingleChallenge(token: string): Promise<ChallengeSolution | undefined> {
-  try {
-    const payload = decodeJWT(token);
-    if (!payload) return undefined;
+  const payload = decodeJWT(token);
+  if (!payload) return undefined;
 
-    const { challenge, difficulty } = payload;
-    const prefix = '0'.repeat(difficulty);
+  const { challenge, difficulty } = payload;
+  const prefix = '0'.repeat(difficulty);
 
-    let nonce = 0;
-    while (true) {
-      const hash = await sha256(`${challenge}${nonce}`);
+  let nonce = 0;
+  while (true) {
+    const hash = await sha256(`${challenge}${nonce}`);
 
-      if (hash.startsWith(prefix)) {
-        return { nonce: String(nonce), hash };
-      }
-
-      nonce++;
-
-      // Yield to prevent blocking the UI (every 1000 iterations)
-      if (nonce % 1000 === 0) {
-        await new Promise(resolve => setTimeout(resolve, 0));
-      }
+    if (hash.startsWith(prefix)) {
+      return { nonce: String(nonce), hash };
     }
-  } catch (err) {
-    return undefined;
+
+    nonce++;
+
+    // Yield to prevent blocking the UI (every 1000 iterations)
+    if (nonce % 1000 === 0) {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
   }
 }
 

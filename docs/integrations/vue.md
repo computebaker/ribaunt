@@ -2,6 +2,8 @@
 
 Integrating Ribaunt CAPTCHA into a Vue 3 project is extremely straightforward since Vue natively understands Web Components.
 
+Client-side solving relies on the Web Crypto API, so development should run in a secure context such as `https://...` or `http://localhost`. Plain local-network HTTP URLs may fail in some browsers.
+
 ## Registration
 
 To use the widget without Vue warning about an "Unknown custom element", you must register it in your `vite.config.ts` or `vue.config.js`:
@@ -89,3 +91,7 @@ const submitForm = () => {
 ```
 
 Since Vue correctly passes properties down, everything is reactive!
+
+If you bind `disabled`, note that the widget now treats it as a real interaction lock: clicks, keyboard activation, and `startVerification()` are blocked until the prop is cleared.
+
+If the browser does not expose `crypto.subtle`, verification will fail with a clear error indicating that HTTPS or `localhost` is required.

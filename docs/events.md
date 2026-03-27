@@ -68,3 +68,5 @@ If you use the React wrapper (`ribaunt/widget-react`), you get built-in strongly
   onEvent={(type, detail) => console.log('Event:', type, detail)}
 />
 ```
+
+The React wrapper also syncs key widget props after mount, including `challengeEndpoint`, `verifyEndpoint`, `showWarning`, `warningMessage`, and `disabled`.

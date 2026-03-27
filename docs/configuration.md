@@ -19,16 +19,34 @@ import { createChallenge } from 'ribaunt';
 | `amount` | `number` | `4` | Number of individual PoW challenges generated at once. Distributes solving workload but requires more network bandwidth. |
 | `ttlSeconds` | `number` | `30` | Expiration time of the JWT token. Rejects solutions submitted after this threshold. |
 
+### Validation Rules
+
+`createChallenge()` now validates its numeric inputs at runtime.
+
+- `difficulty` must be a finite number and at least `1`
+- `amount` must be a finite number and at least `1`
+- `ttlSeconds` must be a finite number and at least `1`
+- fractional values are rounded down with `Math.floor()`
+
 ### Recommended Settings
 - **Fast / Background:** `createChallenge(4, 4, 30)` - takes milliseconds
 - **Moderate / Form Submission:** `createChallenge(5, 4, 60)` - takes ~1 second
 - **High / Sensitive Actions:** `createChallenge(5, 8, 120)` - takes ~2 seconds
 
-> **Warning:** Do not let users control the `difficulty` parameter without sanitizing it!
+> **Warning:** Do not let users control `difficulty`, `amount`, or `ttlSeconds` without validation.
 
 ## Client-Side: `RibauntWidget` Attributes
 
 The `<ribaunt-widget>` web component exposes several standard HTML attributes. When using the React wrapper (`ribaunt/widget-react`), map these as camelCase props (`showWarning`).
+
+## Browser Requirements
+
+The browser solver depends on the Web Crypto API. That means client-side solving should be run in a secure context:
+
+- `https://...`
+- `http://localhost`
+
+Plain LAN URLs such as `http://192.168.x.x` may not expose `crypto.subtle`, especially on mobile browsers.
 
 | Attribute | React Prop | Type | Default | Description |
 |---|---|---|---|---|
@@ -36,7 +54,17 @@ The `<ribaunt-widget>` web component exposes several standard HTML attributes. W
 | `verify-endpoint` | `verifyEndpoint` | `string` | `undefined` | URL endpoint to POST the solutions. If undefined, you must handle verification manually using the solver directly. |
 | `show-warning` | `showWarning` | `boolean\|string` | `false` | Shows a red warning banner above the widget. Often used to alert users if WebAssembly is missing for future fast-solvers. |
 | `warning-message` | `warningMessage` | `string` | `"Enable WASM..."` | Custom message text for the warning banner. |
-| `disabled` | `disabled` | `boolean\|string` | `false` | Disables clicking the widget. |
+| `disabled` | `disabled` | `boolean\|string` | `false` | Disables user interaction and programmatic verification while set. |
+
+### Disabled Behavior
+
+When `disabled` is present and not equal to `"false"`:
+
+- click interaction is blocked
+- keyboard activation is blocked
+- `startVerification()` does nothing
+- the widget is removed from tab order
+- `aria-disabled="true"` is applied for accessibility
 
 ### Example
 

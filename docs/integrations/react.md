@@ -2,10 +2,12 @@
 
 If you are using Vite, Create React App, or another React framework (that doesn't have SSR issues like Next.js), you can either use our provided `widget-react` wrapper or the raw web component.
 
+Client-side solving relies on the Web Crypto API, so development should run in a secure context such as `https://...` or `http://localhost`. Plain local-network HTTP URLs may fail in some browsers.
+
 ## Method 1: Using the React Wrapper (Recommended)
 
 Our React wrapper handles event binding cleanly and exposes a `ref` handle to easily reset or trigger verification.
-It also guarantees a `state-change` callback after mount, plus an explicit ready hook.
+It also guarantees a `state-change` callback after mount, exposes an explicit ready hook, and now syncs key props after mount instead of only during initial creation.
 
 ```tsx
 import React, { useRef } from 'react';
@@ -54,6 +56,26 @@ export default function MyReactApp() {
   );
 }
 ```
+
+### Prop Updates
+
+The React wrapper now updates these props live after mount:
+
+- `challengeEndpoint`
+- `verifyEndpoint`
+- `showWarning`
+- `warningMessage`
+- `disabled`
+
+If your older integration used a changing `key` to force a remount when one of those values changed, that workaround can usually be removed.
+
+### Disabled State
+
+When `disabled` is set, the wrapped widget blocks both user interaction and `startVerification()`. Remove or clear `disabled` before expecting the widget to run.
+
+### Secure Context Requirement
+
+If the browser does not expose `crypto.subtle`, verification will fail with a clear error indicating that HTTPS or `localhost` is required.
 
 ## Method 2: Using the Raw Web Component
 

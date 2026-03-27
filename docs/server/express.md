@@ -12,6 +12,7 @@ npm install express ribaunt
 ## 2. Server Implementation
 
 ```typescript
+import 'dotenv/config';
 import express from 'express';
 import { createChallenge, verifySolution } from 'ribaunt';
 
@@ -21,7 +22,7 @@ const port = process.env.PORT || 3000;
 // Middleware to parse JSON bodies
 app.use(express.json());
 
-// Set your strong secret in the environment
+// Set your strong secret in the environment before handling requests.
 // e.g. export RIBAUNT_SECRET="your_very_strong_random_secret_string"
 if (!process.env.RIBAUNT_SECRET) {
   console.warn('WARNING: RIBAUNT_SECRET environment variable is not set!');
@@ -31,6 +32,7 @@ if (!process.env.RIBAUNT_SECRET) {
 app.get('/api/captcha/challenge', (req, res) => {
   try {
     // Generate 4 challenges with difficulty 5, valid for 120 seconds
+    // Validate any user- or config-controlled inputs before passing them here.
     const challenges = createChallenge(5, 4, 120);
     res.json({ challenges });
   } catch (error) {
@@ -82,3 +84,4 @@ app.listen(port, () => {
 ## 3. Best Practices
 - **Rate Limiting:** Implement IP-based rate limiting on the `/api/captcha/challenge` endpoint using tools like `express-rate-limit` to prevent abuse.
 - **Session Linking:** Instead of simply returning `{ success: true }`, you can return a signed JWT (or set an HTTP-only cookie) that the client must include on subsequent form submissions. This guarantees the form is submitted by a user who recently solved a CAPTCHA.
+- **Input Validation:** Current versions reject invalid `difficulty`, `amount`, and `ttlSeconds` values. Validate untrusted inputs before calling `createChallenge()`.

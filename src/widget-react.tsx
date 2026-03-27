@@ -23,6 +23,42 @@ export interface RibauntWidgetHandle {
   startVerification: () => void;
 }
 
+function syncAttribute(
+  element: RibauntWidgetElement,
+  name: string,
+  value: string | boolean | undefined
+) {
+  if (value === undefined || value === false || value === 'false') {
+    element.removeAttribute(name);
+    return;
+  }
+
+  element.setAttribute(name, typeof value === 'boolean' ? 'true' : String(value));
+}
+
+function syncWidgetProps(
+  element: RibauntWidgetElement,
+  {
+    challengeEndpoint,
+    verifyEndpoint,
+    showWarning,
+    warningMessage,
+    disabled,
+  }: {
+    challengeEndpoint: string | undefined;
+    verifyEndpoint: string | undefined;
+    showWarning: boolean | string | undefined;
+    warningMessage: string | undefined;
+    disabled: boolean | string | undefined;
+  }
+) {
+  syncAttribute(element, 'challenge-endpoint', challengeEndpoint);
+  syncAttribute(element, 'verify-endpoint', verifyEndpoint);
+  syncAttribute(element, 'show-warning', showWarning);
+  syncAttribute(element, 'warning-message', warningMessage);
+  syncAttribute(element, 'disabled', disabled);
+}
+
 /**
  * React wrapper for the Ribaunt Web Component.
  * Safely loads the web component dynamically, avoiding Next.js SSR issues.
@@ -113,13 +149,6 @@ export const RibauntWidget = forwardRef<RibauntWidgetHandle, RibauntWidgetProps>
       widget.addEventListener('error', handleError);
       widget.addEventListener('state-change', handleStateChange);
 
-      // Map camelCase props to kebab-case attributes
-      if (challengeEndpoint) widget.setAttribute('challenge-endpoint', challengeEndpoint);
-      if (verifyEndpoint) widget.setAttribute('verify-endpoint', verifyEndpoint);
-      if (showWarning !== undefined) widget.setAttribute('show-warning', String(showWarning));
-      if (warningMessage) widget.setAttribute('warning-message', warningMessage);
-      if (disabled !== undefined) widget.setAttribute('disabled', String(disabled));
-
       // Apply any remaining standard HTML attributes to the element
       Object.entries(props).forEach(([key, value]) => {
         if (value !== undefined) {
@@ -130,6 +159,14 @@ export const RibauntWidget = forwardRef<RibauntWidgetHandle, RibauntWidgetProps>
              widget.setAttribute(key, String(value));
           }
         }
+      });
+
+      syncWidgetProps(widget, {
+        challengeEndpoint,
+        verifyEndpoint,
+        showWarning,
+        warningMessage,
+        disabled,
       });
 
       containerRef.current.appendChild(widget);
@@ -157,8 +194,22 @@ export const RibauntWidget = forwardRef<RibauntWidgetHandle, RibauntWidgetProps>
         widget.removeEventListener('verify', handleVerify);
         widget.removeEventListener('error', handleError);
         widget.removeEventListener('state-change', handleStateChange);
+        widget.remove();
+        widgetRef.current = null;
       };
     }, [isLoading]);
+
+    useEffect(() => {
+      if (!widgetRef.current) return;
+
+      syncWidgetProps(widgetRef.current, {
+        challengeEndpoint,
+        verifyEndpoint,
+        showWarning,
+        warningMessage,
+        disabled,
+      });
+    }, [challengeEndpoint, verifyEndpoint, showWarning, warningMessage, disabled]);
 
     return isLoading ? null : <div ref={containerRef} />;
   }

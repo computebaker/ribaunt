@@ -11,6 +11,8 @@ In your `.env.local` file, define the `RIBAUNT_SECRET`.
 RIBAUNT_SECRET="your_very_strong_random_secret_string_here"
 ```
 
+This must be available before your route handlers start serving requests. Importing `ribaunt` is now less brittle, but challenge creation and verification still require the secret at call time.
+
 ## 2. App Router (Next.js 13+)
 
 If you are using the modern `app/` directory, create the following route handlers:
@@ -18,12 +20,14 @@ If you are using the modern `app/` directory, create the following route handler
 ### `app/api/captcha/challenge/route.ts`
 
 ```typescript
+import 'dotenv/config';
 import { NextResponse } from 'next/server';
 import { createChallenge } from 'ribaunt';
 
 export async function GET() {
   try {
     // Generate 4 challenges with difficulty 5, valid for 60 seconds
+    // Validate any dynamic values before passing them to createChallenge().
     const challenges = createChallenge(5, 4, 60);
     return NextResponse.json({ challenges });
   } catch (error) {
@@ -38,6 +42,7 @@ export async function GET() {
 ### `app/api/captcha/verify/route.ts`
 
 ```typescript
+import 'dotenv/config';
 import { NextResponse } from 'next/server';
 import { verifySolution } from 'ribaunt';
 
@@ -82,6 +87,7 @@ If you are using the traditional `pages/api/` directory:
 ### `pages/api/captcha/challenge.ts`
 
 ```typescript
+import 'dotenv/config';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createChallenge } from 'ribaunt';
 
@@ -102,6 +108,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 ### `pages/api/captcha/verify.ts`
 
 ```typescript
+import 'dotenv/config';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifySolution } from 'ribaunt';
 
@@ -129,3 +136,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 ```
+
+## Notes
+
+- Validate any request- or config-controlled `difficulty`, `amount`, and `ttlSeconds` values before calling `createChallenge()`.
+- Keep `RIBAUNT_SECRET` server-only and never expose it through `NEXT_PUBLIC_` variables.

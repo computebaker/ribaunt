@@ -22,11 +22,14 @@ Ribaunt uses JWT to securely sign challenge tokens. You must set a strong secret
 RIBAUNT_SECRET="your-very-strong-random-secret-key"
 ```
 
+Load this before handling requests. Importing `ribaunt` no longer fails immediately if the variable is missing, but `createChallenge()` and `verifySolution()` still require it at call time.
+
 ## 2. Server Implementation
 
 You need two endpoints on your server: one to generate the challenge, and one to verify the solution.
 
 ```typescript
+import 'dotenv/config';
 import express from 'express';
 import { createChallenge, verifySolution } from 'ribaunt';
 
@@ -56,7 +59,11 @@ app.post('/api/captcha/verify', (req, res) => {
 app.listen(3000);
 ```
 
+If these values come from config, env, or request input, validate them before calling `createChallenge()`. Current versions reject invalid `difficulty`, `amount`, and `ttlSeconds` values.
+
 ## 3. Frontend Integration
+
+Browser solving requires a secure context. In practice, use `https://` or `http://localhost` during development. Loading the widget from a plain LAN URL such as `http://192.168.x.x` may fail because the Web Crypto API is not available there.
 
 ### Using React / Next.js
 If you are using React or Next.js, use our pre-built React wrapper:
@@ -80,6 +87,8 @@ export default function MyForm() {
 }
 ```
 
+The React wrapper now syncs `challengeEndpoint`, `verifyEndpoint`, `showWarning`, `warningMessage`, and `disabled` after mount. You no longer need to force a remount just to update those props.
+
 ### Using Plain HTML
 Include the widget in your HTML file directly:
 
@@ -99,8 +108,11 @@ Include the widget in your HTML file directly:
 </script>
 ```
 
+If the browser cannot access `crypto.subtle`, the widget will fail verification and emit an error. Current versions surface this clearly as: `Web Crypto API is unavailable. Use HTTPS or localhost.`
+
 ## What's Next?
 - [Framework Integrations](./integrations/)
 - [Server Examples](./server/)
 - [Configuration Options](./configuration.md)
 - [Theming & Styling](./theming.md)
+- [Testing Guide](./testing.md)

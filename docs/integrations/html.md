@@ -2,6 +2,8 @@
 
 You don't need a framework to use Ribaunt CAPTCHA. The widget is a standard Web Component (`<ribaunt-widget>`) that works natively in any modern browser.
 
+Browser solving requires a secure context. Use `https://` or `http://localhost` when testing. Plain local-network URLs such as `http://192.168.x.x` may fail because Web Crypto is unavailable there.
+
 ## 1. Import the Widget
 
 You can load the script as an ES module directly in your HTML:
@@ -55,6 +57,12 @@ You can load the script as an ES module directly in your HTML:
 </body>
 </html>
 ```
+
+## Notes
+
+- If you set `disabled` on `<ribaunt-widget>`, it now blocks both user interaction and `startVerification()`.
+- Remove the `disabled` attribute before expecting the widget to verify.
+- If the browser cannot access `crypto.subtle`, the widget will emit an error explaining that HTTPS or `localhost` is required.
 
 ## Styling
 

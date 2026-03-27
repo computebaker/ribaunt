@@ -56,6 +56,8 @@ export default function MyPage() {
 }
 ```
 
+The wrapper also syncs `challengeEndpoint`, `verifyEndpoint`, `showWarning`, `warningMessage`, and `disabled` after mount, so you generally do not need to force remounts when those props change.
+
 ## Step 2: Setting up Next.js Route Handlers (API Routes)
 
 Create the necessary API endpoints in the `app/api/` directory (or `pages/api/` if using Pages Router).
@@ -63,6 +65,7 @@ Create the necessary API endpoints in the `app/api/` directory (or `pages/api/` 
 ### `app/api/captcha/challenge/route.ts`
 
 ```typescript
+import 'dotenv/config';
 import { NextResponse } from 'next/server';
 import { createChallenge } from 'ribaunt';
 
@@ -76,6 +79,7 @@ export async function GET() {
 ### `app/api/captcha/verify/route.ts`
 
 ```typescript
+import 'dotenv/config';
 import { NextResponse } from 'next/server';
 import { verifySolution } from 'ribaunt';
 
@@ -99,3 +103,6 @@ export async function POST(req: Request) {
 - **Do not wrap in `next/dynamic`**: `ribaunt/widget-react` already handles dynamic importing internally, making your code cleaner.
 - **Ready & initial state**: `onReady` fires once after the widget is mounted. `onStateChange` always fires at least once after mount with the current state.
 - **Environment Variables**: Make sure your `RIBAUNT_SECRET` is defined in `.env.local` but *do not* prefix it with `NEXT_PUBLIC_` since it must stay on the server.
+- **Secure context**: Browser solving uses Web Crypto, so development should run on `https://` or `http://localhost`. Plain local-network HTTP URLs may fail in some browsers.
+- **Validation**: Validate any dynamic inputs before passing them to `createChallenge()`. Invalid `difficulty`, `amount`, and `ttlSeconds` values now throw.
+- **Disabled semantics**: `disabled` now blocks both user interaction and `startVerification()`.
