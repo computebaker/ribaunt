@@ -58,6 +58,7 @@ describe('RibauntWidget React wrapper', () => {
           verifyEndpoint="/verify-a"
           showWarning={true}
           warningMessage="First warning"
+          solveTimeout={2500}
           disabled={true}
         />
       );
@@ -75,6 +76,7 @@ describe('RibauntWidget React wrapper', () => {
     expect(widget.getAttribute('verify-endpoint')).toBe('/verify-a');
     expect(widget.getAttribute('show-warning')).toBe('true');
     expect(widget.getAttribute('warning-message')).toBe('First warning');
+    expect(widget.getAttribute('solve-timeout')).toBe('2500');
     expect(widget.getAttribute('disabled')).toBe('true');
 
     await act(async () => {
@@ -94,6 +96,7 @@ describe('RibauntWidget React wrapper', () => {
     expect(widget.getAttribute('verify-endpoint')).toBe('/verify-b');
     expect(widget.getAttribute('show-warning')).toBeNull();
     expect(widget.getAttribute('warning-message')).toBe('Second warning');
+    expect(widget.getAttribute('solve-timeout')).toBeNull();
     expect(widget.getAttribute('disabled')).toBeNull();
   });
 

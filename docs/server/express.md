@@ -41,7 +41,7 @@ app.get('/api/captcha/challenge', (req, res) => {
 });
 
 // 2. Endpoint to verify the solution
-app.post('/api/captcha/verify', (req, res) => {
+app.post('/api/captcha/verify', async (req, res) => {
   try {
     const { tokens, solutions } = req.body;
     
@@ -54,7 +54,9 @@ app.post('/api/captcha/verify', (req, res) => {
     }
     
     // Verify the PoW solution against the original tokens
-    const isValid = verifySolution(tokens, solutions);
+    const isValid = await verifySolution(tokens, solutions, {
+      replayPrevention: 'local',
+    });
     
     if (isValid) {
       // You can implement custom logic here like tracking the IP or setting a session token
@@ -85,3 +87,4 @@ app.listen(port, () => {
 - **Rate Limiting:** Implement IP-based rate limiting on the `/api/captcha/challenge` endpoint using tools like `express-rate-limit` to prevent abuse.
 - **Session Linking:** Instead of simply returning `{ success: true }`, you can return a signed JWT (or set an HTTP-only cookie) that the client must include on subsequent form submissions. This guarantees the form is submitted by a user who recently solved a CAPTCHA.
 - **Input Validation:** Current versions reject invalid `difficulty`, `amount`, and `ttlSeconds` values. Validate untrusted inputs before calling `createChallenge()`.
+- **Replay Mode Selection:** Use `local` replay protection only for single-instance deployments. In serverless or multi-instance deployments, use `remote` with a distributed store adapter.

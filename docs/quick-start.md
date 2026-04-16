@@ -44,10 +44,12 @@ app.get('/api/captcha/challenge', (req, res) => {
 });
 
 // 2. Endpoint to verify the solution
-app.post('/api/captcha/verify', (req, res) => {
+app.post('/api/captcha/verify', async (req, res) => {
   const { tokens, solutions } = req.body;
-  
-  const isValid = verifySolution(tokens, solutions);
+
+  const isValid = await verifySolution(tokens, solutions, {
+    replayPrevention: 'local',
+  });
   
   if (isValid) {
     res.json({ success: true, message: 'Verified!' });
@@ -78,7 +80,9 @@ export default function MyForm() {
       <RibauntWidget 
         challengeEndpoint="/api/captcha/challenge"
         verifyEndpoint="/api/captcha/verify"
+        solveTimeout={15000}
         onVerify={() => console.log('User verified!')}
+        onError={(detail) => console.error('Verification failed:', detail.error)}
         onReady={(detail) => console.log('Widget ready:', detail.state)}
       />
       <button type="submit">Submit</button>
@@ -87,7 +91,7 @@ export default function MyForm() {
 }
 ```
 
-The React wrapper now syncs `challengeEndpoint`, `verifyEndpoint`, `showWarning`, `warningMessage`, and `disabled` after mount. You no longer need to force a remount just to update those props.
+The React wrapper now syncs `challengeEndpoint`, `verifyEndpoint`, `showWarning`, `warningMessage`, `solveTimeout`, and `disabled` after mount. You no longer need to force a remount just to update those props.
 
 ### Using Plain HTML
 Include the widget in your HTML file directly:

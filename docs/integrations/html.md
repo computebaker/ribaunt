@@ -25,6 +25,7 @@ You can load the script as an ES module directly in your HTML:
             id="captcha"
             challenge-endpoint="/api/captcha/challenge"
             verify-endpoint="/api/captcha/verify"
+            solve-timeout="15000"
         ></ribaunt-widget>
 
         <!-- Keep disabled until verified -->
@@ -45,6 +46,9 @@ You can load the script as an ES module directly in your HTML:
             // Listen for errors
             widget.addEventListener('error', (e) => {
                 console.error('CAPTCHA Failed:', e.detail.error);
+                if (e.detail.timeout) {
+                  console.warn('Solving timed out - try again');
+                }
                 submitBtn.disabled = true;
             });
             

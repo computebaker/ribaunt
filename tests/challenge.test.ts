@@ -1,4 +1,4 @@
-import { createChallenge, solveChallenge, verifySolution } from '../src/index';
+import { createChallenge, solveChallenge, verifySolution, LocalReplayStore } from '../src/index';
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 
 const originalSecret = process.env.RIBAUNT_SECRET;
@@ -25,7 +25,7 @@ describe('test challenge flow', () => {
         });
     });
 
-    it('solves multiple challenges and validates each solution', () => {
+    it('solves multiple challenges and validates each solution', async () => {
         const tokens = createChallenge(2, 2);
         const solutions = solveChallenge(tokens);
 
@@ -38,11 +38,11 @@ describe('test challenge flow', () => {
             expect(nonce.length).toBeGreaterThan(0);
         });
 
-            const verification = verifySolution(tokens, nonces);
-            expect(verification).toBe(true);
+                const verification = await verifySolution(tokens, nonces);
+                expect(verification).toBe(true);
     });
 
-    it('solves a single challenge and validates the solution', () => {
+            it('solves a single challenge and validates the solution', async () => {
         const [token] = createChallenge(3, 1);
         const solution = solveChallenge(token);
 
@@ -50,22 +50,22 @@ describe('test challenge flow', () => {
         expect(typeof solution?.nonce).toBe('string');
         expect(solution?.nonce.length).toBeGreaterThan(0);
 
-        const isValid = verifySolution(token, solution!.nonce);
+        const isValid = await verifySolution(token, solution!.nonce);
         expect(isValid).toBe(true);
     });
 
-    it('rejects an invalid nonce for a valid token', () => {
+    it('rejects an invalid nonce for a valid token', async () => {
         const [token] = createChallenge(3, 1);
-        const isValid = verifySolution(token, 'invalid-nonce');
+        const isValid = await verifySolution(token, 'invalid-nonce');
         expect(isValid).toBe(false);
     });
 
-    it('returns false when the challenge token is tampered with', () => {
+    it('returns false when the challenge token is tampered with', async () => {
         const [token] = createChallenge(3, 1);
         const tamperedToken = `${token}tampered`;
         const solution = solveChallenge(token);
 
-        const isValid = solution ? verifySolution(tamperedToken, solution.nonce) : false;
+        const isValid = solution ? await verifySolution(tamperedToken, solution.nonce, { debug: false }) : false;
         expect(isValid).toBe(false);
     });
 
@@ -74,14 +74,14 @@ describe('test challenge flow', () => {
         expect(solution).toBeUndefined();
     });
 
-    it('marks mismatched nonce arrays as invalid', () => {
+    it('marks mismatched nonce arrays as invalid', async () => {
         const tokens = createChallenge(3, 2);
-        const verification = verifySolution(tokens, ['only-one-nonce']);
+        const verification = await verifySolution(tokens, ['only-one-nonce']);
 
         expect(verification).toBe(false);
     });
 
-    it('rejects expired challenges', () => {
+    it('rejects expired challenges', async () => {
         jest.useFakeTimers();
         const issuedAt = new Date('2026-01-01T00:00:00Z');
         jest.setSystemTime(issuedAt);
@@ -92,19 +92,74 @@ describe('test challenge flow', () => {
         jest.setSystemTime(new Date('2026-01-01T00:00:03Z'));
 
         expect(solution).toBeTruthy();
-        expect(verifySolution(token, solution!.nonce)).toBe(false);
+        await expect(verifySolution(token, solution!.nonce)).resolves.toBe(false);
     });
 
-    it('returns false for malformed tokens during verification', () => {
-        expect(verifySolution('not-a-jwt', '123')).toBe(false);
-        expect(verifySolution(['still-not-a-jwt'], ['123'])).toBe(false);
+    it('returns false for malformed tokens during verification', async () => {
+        await expect(verifySolution('not-a-jwt', '123', { debug: false })).resolves.toBe(false);
+        await expect(verifySolution(['still-not-a-jwt'], ['123'], { debug: false })).resolves.toBe(false);
     });
 
-    it('rejects invalid nonce payload shapes', () => {
+    it('rejects invalid nonce payload shapes', async () => {
         const [token] = createChallenge(2, 1, 30);
 
-        expect(verifySolution(token, { nonce: '', hash: '' })).toBe(false);
-        expect(verifySolution([token], [{ nonce: '', hash: '' }])).toBe(false);
+        await expect(verifySolution(token, { nonce: '', hash: '' })).resolves.toBe(false);
+        await expect(verifySolution([token], [{ nonce: '', hash: '' }])).resolves.toBe(false);
+    });
+
+    it('keeps replay disabled by default for backwards compatibility', async () => {
+        const [token] = createChallenge(2, 1, 30);
+        const solution = solveChallenge(token);
+
+        expect(solution).toBeTruthy();
+        await expect(verifySolution(token, solution!.nonce)).resolves.toBe(true);
+        await expect(verifySolution(token, solution!.nonce)).resolves.toBe(true);
+    });
+
+    it('blocks replay when local replay prevention is enabled', async () => {
+        const [token] = createChallenge(2, 1, 30);
+        const solution = solveChallenge(token);
+
+        expect(solution).toBeTruthy();
+        await expect(verifySolution(token, solution!.nonce, { replayPrevention: 'local' })).resolves.toBe(true);
+        await expect(verifySolution(token, solution!.nonce, { replayPrevention: 'local' })).resolves.toBe(false);
+    });
+
+    it('supports custom remote replay stores', async () => {
+        const [token] = createChallenge(2, 1, 30);
+        const solution = solveChallenge(token);
+        const consumed = new Set<string>();
+
+        const remoteStore = {
+            consume: async (jti: string) => {
+                if (consumed.has(jti)) {
+                    return false;
+                }
+
+                consumed.add(jti);
+                return true;
+            },
+        };
+
+        expect(solution).toBeTruthy();
+        await expect(verifySolution(token, solution!.nonce, {
+            replayPrevention: 'remote',
+            replayStore: remoteStore,
+        })).resolves.toBe(true);
+        await expect(verifySolution(token, solution!.nonce, {
+            replayPrevention: 'remote',
+            replayStore: remoteStore,
+        })).resolves.toBe(false);
+    });
+
+    it('throws when remote replay prevention is selected without a store', async () => {
+        const [token] = createChallenge(2, 1, 30);
+        const solution = solveChallenge(token);
+
+        expect(solution).toBeTruthy();
+        await expect(verifySolution(token, solution!.nonce, {
+            replayPrevention: 'remote',
+        })).resolves.toBe(false);
     });
 
     it('throws for invalid challenge config values', () => {
@@ -114,10 +169,32 @@ describe('test challenge flow', () => {
         expect(() => createChallenge(Number.NaN, 1, 30)).toThrow('Challenge difficulty must be a finite number');
     });
 
-    it('throws when secret-dependent operations run without RIBAUNT_SECRET', () => {
+    it('throws when secret-dependent operations run without RIBAUNT_SECRET', async () => {
         delete process.env.RIBAUNT_SECRET;
 
         expect(() => createChallenge(1, 1, 30)).toThrow('RIBAUNT_SECRET environment variable is not set!');
-        expect(verifySolution('not-a-real-token', '1')).toBe(false);
+        await expect(verifySolution('not-a-real-token', '1', { debug: false })).resolves.toBe(false);
+    });
+
+    it('can use an isolated local replay store instance', async () => {
+        const [token] = createChallenge(2, 1, 30);
+        const solution = solveChallenge(token);
+        const localStore = new LocalReplayStore();
+
+        expect(solution).toBeTruthy();
+
+        const adapter = {
+            consume: (jti: string, expiresAt: number) => localStore.consume(jti, expiresAt),
+        };
+
+        await expect(verifySolution(token, solution!.nonce, {
+            replayPrevention: 'remote',
+            replayStore: adapter,
+        })).resolves.toBe(true);
+
+        await expect(verifySolution(token, solution!.nonce, {
+            replayPrevention: 'remote',
+            replayStore: adapter,
+        })).resolves.toBe(false);
     });
 });

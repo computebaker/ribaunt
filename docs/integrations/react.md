@@ -32,6 +32,10 @@ export default function MyReactApp() {
     console.log('Widget ready with state:', detail.state);
   };
 
+  const handleLoad = (detail) => {
+    console.log('Widget loaded:', detail.state);
+  };
+
   const handleEvent = (type, detail) => {
     console.log('Widget event:', type, detail);
   };
@@ -42,10 +46,12 @@ export default function MyReactApp() {
         ref={widgetRef}
         challengeEndpoint="/api/captcha/challenge"
         verifyEndpoint="/api/captcha/verify"
+        solveTimeout={15000}
         onVerify={handleVerify}
         onError={handleError}
         onStateChange={handleStateChange}
         onReady={handleReady}
+        onLoad={handleLoad}
         onEvent={handleEvent}
       />
       <button type="button" onClick={() => widgetRef.current?.startVerification()}>
@@ -65,6 +71,7 @@ The React wrapper now updates these props live after mount:
 - `verifyEndpoint`
 - `showWarning`
 - `warningMessage`
+- `solveTimeout`
 - `disabled`
 
 If your older integration used a changing `key` to force a remount when one of those values changed, that workaround can usually be removed.

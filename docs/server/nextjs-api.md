@@ -60,7 +60,9 @@ export async function POST(req: Request) {
     }
     
     // Verify the PoW solution against the original tokens
-    const isValid = verifySolution(tokens, solutions);
+    const isValid = await verifySolution(tokens, solutions, {
+      replayPrevention: 'local',
+    });
     
     if (isValid) {
       // You might also set a secure HTTP-only cookie here to track verification
@@ -91,7 +93,7 @@ import 'dotenv/config';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createChallenge } from 'ribaunt';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -124,7 +126,9 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(400).json({ success: false, error: 'Missing tokens or solutions' });
     }
     
-    const isValid = verifySolution(tokens, solutions);
+    const isValid = await verifySolution(tokens, solutions, {
+      replayPrevention: 'local',
+    });
     
     if (isValid) {
       res.status(200).json({ success: true, message: 'Verification successful' });
@@ -141,3 +145,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
 - Validate any request- or config-controlled `difficulty`, `amount`, and `ttlSeconds` values before calling `createChallenge()`.
 - Keep `RIBAUNT_SECRET` server-only and never expose it through `NEXT_PUBLIC_` variables.
+- Choose replay strategy per deployment shape:
+  - single process: `replayPrevention: 'local'`
+  - multi-instance/serverless: `replayPrevention: 'remote'` with a distributed replay store adapter
+  - explicit backward compatibility: `replayPrevention: 'disabled'`

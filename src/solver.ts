@@ -56,7 +56,10 @@ async function sha256(message: string): Promise<string> {
 /**
  * Solve a single challenge token (browser-compatible)
  */
-export async function solveSingleChallenge(token: string): Promise<ChallengeSolution | undefined> {
+export async function solveSingleChallenge(
+  token: string,
+  signal?: AbortSignal
+): Promise<ChallengeSolution | undefined> {
   const payload = decodeJWT(token);
   if (!payload) return undefined;
 
@@ -65,6 +68,10 @@ export async function solveSingleChallenge(token: string): Promise<ChallengeSolu
 
   let nonce = 0;
   while (true) {
+    if (signal?.aborted) {
+      throw new DOMException('Challenge solving aborted', 'AbortError');
+    }
+
     const hash = await sha256(`${challenge}${nonce}`);
 
     if (hash.startsWith(prefix)) {
@@ -85,7 +92,8 @@ export async function solveSingleChallenge(token: string): Promise<ChallengeSolu
  */
 export async function solveChallenge(
   tokens: string[],
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  signal?: AbortSignal
 ): Promise<ChallengeSolution[]> {
   const solutions: ChallengeSolution[] = [];
 
@@ -95,7 +103,7 @@ export async function solveChallenge(
       throw new Error(`Invalid token at index ${i}`);
     }
     
-    const solution = await solveSingleChallenge(token);
+    const solution = await solveSingleChallenge(token, signal);
     if (!solution) {
       throw new Error(`Failed to solve challenge ${i + 1}`);
     }

@@ -12,10 +12,18 @@ Ribaunt CAPTCHA is fully customizable using CSS custom properties (variables). Y
 | `--ribaunt-color` | Text color | `#212121` |
 | `--ribaunt-widget-width` | Widget width | `230px` |
 | `--ribaunt-widget-height` | Widget height | `58px` |
+| `--ribaunt-widget-padding` | Widget inner padding | `14px` |
+| `--ribaunt-gap` | Gap between checkbox and text | `15px` |
+| `--ribaunt-checkbox-size` | Checkbox width and height | `25px` |
 | `--ribaunt-checkbox-background` | Checkbox background color | `#fafafa91` |
 | `--ribaunt-checkbox-border` | Checkbox border | `1px solid #aaaaaad1` |
+| `--ribaunt-checkbox-border-radius` | Checkbox border radius | `6px` |
+| `--ribaunt-checkbox-margin` | Checkbox top/bottom margin | `2px` |
 | `--ribaunt-spinner-color` | Active spinner segment color | `#000` |
 | `--ribaunt-spinner-background-color` | Inactive spinner track color | `#eee` |
+| `--ribaunt-spinner-thickness` | Spinner ring thickness | `5px` |
+| `--ribaunt-checkmark` | Success checkmark SVG URL | Built-in green checkmark |
+| `--ribaunt-error-cross` | Error cross icon SVG URL | Built-in red warning icon |
 | `--ribaunt-logo-color` | Color of the Ribaunt logo | `#666` |
 | `--ribaunt-font` | Font stack | system sans-serif |
 

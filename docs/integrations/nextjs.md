@@ -41,6 +41,7 @@ export default function MyPage() {
         ref={widgetRef}
         challengeEndpoint="/api/captcha/challenge"
         verifyEndpoint="/api/captcha/verify"
+        solveTimeout={15000}
         showWarning={false}
         onVerify={handleVerify}
         onError={handleError}
@@ -87,7 +88,9 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { tokens, solutions } = body;
   
-  const isValid = verifySolution(tokens, solutions);
+  const isValid = await verifySolution(tokens, solutions, {
+    replayPrevention: 'local',
+  });
   
   if (isValid) {
     return NextResponse.json({ success: true });
@@ -106,3 +109,5 @@ export async function POST(req: Request) {
 - **Secure context**: Browser solving uses Web Crypto, so development should run on `https://` or `http://localhost`. Plain local-network HTTP URLs may fail in some browsers.
 - **Validation**: Validate any dynamic inputs before passing them to `createChallenge()`. Invalid `difficulty`, `amount`, and `ttlSeconds` values now throw.
 - **Disabled semantics**: `disabled` now blocks both user interaction and `startVerification()`.
+- **Replay protection**: Use `replayPrevention: 'local'` for single-instance deployments or `replayPrevention: 'remote'` with a distributed store for serverless/multi-instance deployments.
+- **Timeouts are opt-in**: `solveTimeout`/`solve-timeout` is optional. If omitted, solve attempts are not auto-cancelled.

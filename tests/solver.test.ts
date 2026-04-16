@@ -68,4 +68,23 @@ describe('browser solver', () => {
       value: originalCrypto,
     });
   });
+
+  it('aborts solving when signal is cancelled', async () => {
+    const [token] = createChallenge(7, 1, 60);
+    const controller = new AbortController();
+
+    const promise = solveSingleChallenge(token, controller.signal);
+    controller.abort();
+
+    await expect(promise).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('passes abort signal through solveChallenge', async () => {
+    const [tokenA, tokenB] = createChallenge(1, 2, 60);
+    const controller = new AbortController();
+
+    const solutions = await solveChallenge([tokenA, tokenB], undefined, controller.signal);
+
+    expect(solutions).toHaveLength(2);
+  });
 });

@@ -35,6 +35,41 @@ import { createChallenge } from 'ribaunt';
 
 > **Warning:** Do not let users control `difficulty`, `amount`, or `ttlSeconds` without validation.
 
+## Server-Side: `verifySolution` (async)
+
+`verifySolution()` is asynchronous and supports optional replay-prevention modes.
+
+```typescript
+import { verifySolution } from 'ribaunt';
+
+// Signature
+// verifySolution(tokens, nonceOrSolutions, options?): Promise<boolean>
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `replayPrevention` | `'disabled' \| 'local' \| 'remote'` | `'disabled'` | `disabled` keeps backward-compatible behavior, `local` uses in-process memory, `remote` uses your custom store adapter. |
+| `replayStore` | `{ consume(jti, expiresAt): Promise<boolean> }` | `undefined` | Required when `replayPrevention` is `remote`. Should perform atomic consume semantics (for example Redis `SET NX EX`). |
+| `debug` | `boolean` | environment-based | Enables verification warnings for malformed/invalid submissions. |
+
+### Replay Modes
+
+- `disabled`: no replay checks; repeated valid submissions can still pass during token TTL.
+- `local`: replay checks are process-local (good for single-instance deployments).
+- `remote`: replay checks use your distributed store (recommended for serverless/multi-instance setups).
+
+```typescript
+const isValid = await verifySolution(tokens, solutions, {
+  replayPrevention: 'remote',
+  replayStore: {
+    consume: async (jti, expiresAt) => {
+      // Implement this with Redis/Valkey using an atomic "set if not exists" + expiry.
+      return true;
+    },
+  },
+});
+```
+
 ## Client-Side: `RibauntWidget` Attributes
 
 The `<ribaunt-widget>` web component exposes several standard HTML attributes. When using the React wrapper (`ribaunt/widget-react`), map these as camelCase props (`showWarning`).
@@ -54,6 +89,7 @@ Plain LAN URLs such as `http://192.168.x.x` may not expose `crypto.subtle`, espe
 | `verify-endpoint` | `verifyEndpoint` | `string` | `undefined` | URL endpoint to POST the solutions. If undefined, you must handle verification manually using the solver directly. |
 | `show-warning` | `showWarning` | `boolean\|string` | `false` | Shows a red warning banner above the widget. Often used to alert users if WebAssembly is missing for future fast-solvers. |
 | `warning-message` | `warningMessage` | `string` | `"Enable WASM..."` | Custom message text for the warning banner. |
+| `solve-timeout` | `solveTimeout` | `number\|string` | `undefined` | Optional timeout in milliseconds for solving. If omitted, solving is not automatically timed out. |
 | `disabled` | `disabled` | `boolean\|string` | `false` | Disables user interaction and programmatic verification while set. |
 
 ### Disabled Behavior
@@ -74,6 +110,27 @@ When `disabled` is present and not equal to `"false"`:
   verify-endpoint="https://api.myapp.com/verify"
   show-warning="true"
   warning-message="WASM is disabled; this may take 3x longer!"
+  solve-timeout="15000"
   disabled="false"
 ></ribaunt-widget>
 ```
+
+## React: `RibauntWidget` Props and Callbacks
+
+When using the React wrapper (`ribaunt/widget-react`), all HTML attributes above are available as camelCase props. Additionally, you can use typed callback props:
+
+| Prop | Type | Description |
+|---|---|---|
+| `challengeEndpoint` | `string` | (HTML: `challenge-endpoint`) |
+| `verifyEndpoint` | `string` | (HTML: `verify-endpoint`) |
+| `showWarning` | `boolean\|string` | (HTML: `show-warning`) |
+| `warningMessage` | `string` | (HTML: `warning-message`) |
+| `solveTimeout` | `number\|string` | (HTML: `solve-timeout`) |
+| `disabled` | `boolean\|string` | (HTML: `disabled`) |
+| `onVerify` | `(detail) => void` | Fired when verification succeeds |
+| `onError` | `(detail) => void` | Fired when an error occurs |
+| `onStateChange` | `(detail) => void` | Fired when state changes |
+| `onReady` | `(detail) => void` | Fired once after widget mounts (React-only) |
+| `onLoad` | `(detail) => void` | Alias for onReady (React-only) |
+| `onEvent` | `(type, detail) => void` | Catch-all for all event types |
+| `ref` | `React.Ref<RibauntWidgetHandle>` | Imperative handle for `reset()`, `getState()`, `startVerification()` |

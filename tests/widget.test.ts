@@ -69,7 +69,7 @@ describe('RibauntWidget', () => {
     await flushPromises();
 
     expect(global.fetch).toHaveBeenNthCalledWith(1, '/challenge');
-    expect(mockSolveChallenge).toHaveBeenCalledWith(['token-1', 'token-2'], expect.any(Function));
+    expect(mockSolveChallenge).toHaveBeenCalledWith(['token-1', 'token-2'], expect.any(Function), undefined);
     expect(global.fetch).toHaveBeenNthCalledWith(
       2,
       '/verify',
@@ -164,5 +164,53 @@ describe('RibauntWidget', () => {
     expect(global.fetch).not.toHaveBeenCalled();
     expect(mockSolveChallenge).not.toHaveBeenCalled();
     expect(widget.shadowRoot?.querySelector('.captcha')?.getAttribute('data-state')).toBe('initial');
+  });
+
+  it('transitions to error and emits timeout metadata when solve-timeout is set', async () => {
+    const widget = document.createElement('ribaunt-widget');
+    widget.setAttribute('challenge-endpoint', '/challenge');
+    widget.setAttribute('solve-timeout', '10');
+
+    const errorHandler = jest.fn();
+    widget.addEventListener('error', errorHandler as EventListener);
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ challenges: ['token-1'] }),
+    });
+
+    mockSolveChallenge.mockImplementation(async (_tokens: string[], _onProgress?: (progress: number) => void, signal?: AbortSignal) => {
+      return new Promise((_resolve, reject) => {
+        signal?.addEventListener('abort', () => {
+          reject(new DOMException('Challenge solving aborted', 'AbortError'));
+        });
+      });
+    });
+
+    document.body.appendChild(widget);
+    (widget.shadowRoot?.querySelector('.captcha') as HTMLDivElement).click();
+
+    await flushPromises();
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    expect(widget.shadowRoot?.querySelector('.captcha')?.getAttribute('data-state')).toBe('error');
+    expect(errorHandler).toHaveBeenCalledTimes(1);
+    const event = errorHandler.mock.calls[0]?.[0] as CustomEvent<{ error: string; timeout?: boolean }>;
+    expect(event.detail.timeout).toBe(true);
+    expect(event.detail.error).toBe('Timed out. Try again.');
+  });
+
+  it('animates warning by applying visible class after render', async () => {
+    const widget = document.createElement('ribaunt-widget');
+    widget.setAttribute('show-warning', 'true');
+    document.body.appendChild(widget);
+
+    const warning = widget.shadowRoot?.querySelector('.warning') as HTMLDivElement;
+    expect(warning).toBeTruthy();
+    expect(warning.classList.contains('visible')).toBe(false);
+
+    await flushPromises();
+
+    expect(warning.classList.contains('visible')).toBe(true);
   });
 });

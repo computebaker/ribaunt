@@ -8,9 +8,10 @@ export interface RibauntWidgetProps extends Omit<React.HTMLAttributes<RibauntWid
   verifyEndpoint?: string;
   showWarning?: boolean | string;
   warningMessage?: string;
+  solveTimeout?: number | string;
   disabled?: boolean | string;
   onVerify?: (detail: { solutions: any[] }) => void;
-  onError?: (detail: { error: string }) => void;
+  onError?: (detail: { error: string; timeout?: boolean }) => void;
   onStateChange?: (detail: { state: WidgetState }) => void;
   onReady?: (detail: { state: WidgetState }) => void;
   onLoad?: (detail: { state: WidgetState }) => void;
@@ -26,7 +27,7 @@ export interface RibauntWidgetHandle {
 function syncAttribute(
   element: RibauntWidgetElement,
   name: string,
-  value: string | boolean | undefined
+  value: string | number | boolean | undefined
 ) {
   if (value === undefined || value === false || value === 'false') {
     element.removeAttribute(name);
@@ -43,12 +44,14 @@ function syncWidgetProps(
     verifyEndpoint,
     showWarning,
     warningMessage,
+    solveTimeout,
     disabled,
   }: {
     challengeEndpoint: string | undefined;
     verifyEndpoint: string | undefined;
     showWarning: boolean | string | undefined;
     warningMessage: string | undefined;
+    solveTimeout: number | string | undefined;
     disabled: boolean | string | undefined;
   }
 ) {
@@ -56,6 +59,7 @@ function syncWidgetProps(
   syncAttribute(element, 'verify-endpoint', verifyEndpoint);
   syncAttribute(element, 'show-warning', showWarning);
   syncAttribute(element, 'warning-message', warningMessage);
+  syncAttribute(element, 'solve-timeout', solveTimeout);
   syncAttribute(element, 'disabled', disabled);
 }
 
@@ -70,6 +74,7 @@ export const RibauntWidget = forwardRef<RibauntWidgetHandle, RibauntWidgetProps>
       verifyEndpoint,
       showWarning,
       warningMessage,
+      solveTimeout,
       disabled,
       onVerify,
       onError,
@@ -166,6 +171,7 @@ export const RibauntWidget = forwardRef<RibauntWidgetHandle, RibauntWidgetProps>
         verifyEndpoint,
         showWarning,
         warningMessage,
+        solveTimeout,
         disabled,
       });
 
@@ -207,9 +213,10 @@ export const RibauntWidget = forwardRef<RibauntWidgetHandle, RibauntWidgetProps>
         verifyEndpoint,
         showWarning,
         warningMessage,
+        solveTimeout,
         disabled,
       });
-    }, [challengeEndpoint, verifyEndpoint, showWarning, warningMessage, disabled]);
+    }, [challengeEndpoint, verifyEndpoint, showWarning, warningMessage, solveTimeout, disabled]);
 
     return isLoading ? null : <div ref={containerRef} />;
   }

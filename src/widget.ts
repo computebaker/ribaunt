@@ -208,6 +208,7 @@ export class RibauntWidget extends HTMLElement {
   private shadow: ShadowRoot;
   private state: WidgetState = 'initial';
   private progress: number = 0;
+  private timeoutError = false;
   private captchaElement: HTMLDivElement | null = null;
   private checkboxElement: HTMLDivElement | null = null;
   private messageElement: HTMLParagraphElement | null = null;
@@ -220,6 +221,7 @@ export class RibauntWidget extends HTMLElement {
       'verify-endpoint',
       'show-warning',
       'warning-message',
+      'solve-timeout',
       'disabled',
     ];
   }
@@ -257,7 +259,7 @@ export class RibauntWidget extends HTMLElement {
     this.shadow.innerHTML = `
       <style>${WIDGET_STYLES}</style>
       <div>
-        ${showWarning ? `<div class="warning ${showWarning ? 'visible' : ''}">${warningMessage}</div>` : ''}
+        ${showWarning ? `<div class="warning">${warningMessage}</div>` : ''}
         <div class="captcha" data-state="${this.state}" role="button" tabindex="${disabled ? '-1' : '0'}" aria-disabled="${disabled}" aria-label="${this.getMessage()}">
           <div class="checkbox"></div>
           <p>${this.getMessage()}</p>
@@ -273,6 +275,12 @@ export class RibauntWidget extends HTMLElement {
     this.messageElement = this.shadow.querySelector('p');
     this.warningElement = this.shadow.querySelector('.warning');
     this.logoElement = this.shadow.querySelector('.logo');
+
+    if (showWarning && this.warningElement) {
+      setTimeout(() => {
+        this.warningElement?.classList.add('visible');
+      }, 0);
+    }
 
     // Update progress CSS variable if verifying
     if (this.state === 'verifying' && this.captchaElement) {
@@ -328,8 +336,22 @@ export class RibauntWidget extends HTMLElement {
       case 'done':
         return "You're a human";
       case 'error':
-        return 'Error. Try again.';
+        return this.timeoutError ? 'Timed out. Try again.' : 'Error. Try again.';
     }
+  }
+
+  private getSolveTimeoutMs(): number | undefined {
+    const raw = this.getAttribute('solve-timeout');
+    if (!raw) {
+      return undefined;
+    }
+
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value <= 0) {
+      return undefined;
+    }
+
+    return Math.floor(value);
   }
 
   private isDisabled(): boolean {
@@ -337,6 +359,10 @@ export class RibauntWidget extends HTMLElement {
   }
 
   private setState(newState: WidgetState) {
+    if (newState !== 'error') {
+      this.timeoutError = false;
+    }
+
     this.state = newState;
     if (this.captchaElement) {
       this.captchaElement.setAttribute('data-state', this.state);
@@ -378,6 +404,14 @@ export class RibauntWidget extends HTMLElement {
     this.setState('verifying');
     this.setProgress(0);
 
+    const timeoutMs = this.getSolveTimeoutMs();
+    const controller = timeoutMs ? new AbortController() : undefined;
+    const timeoutHandle = timeoutMs
+      ? setTimeout(() => {
+          controller?.abort();
+        }, timeoutMs)
+      : undefined;
+
     try {
       const challengeEndpoint = this.getAttribute('challenge-endpoint');
       const verifyEndpoint = this.getAttribute('verify-endpoint');
@@ -399,7 +433,7 @@ export class RibauntWidget extends HTMLElement {
       // Solve challenges using the browser-compatible solver
       const solutions = await solveChallenge(tokens, (progress) => {
         this.setProgress(progress);
-      });
+      }, controller?.signal);
 
       // Verify solution
       if (verifyEndpoint) {
@@ -425,16 +459,26 @@ export class RibauntWidget extends HTMLElement {
         })
       );
     } catch (error) {
+      this.timeoutError = error instanceof DOMException && error.name === 'AbortError';
       this.setState('error');
       
       // Dispatch error event
       this.dispatchEvent(
         new CustomEvent('error', {
-          detail: { error: error instanceof Error ? error.message : String(error) },
+          detail: {
+            error: this.timeoutError
+              ? 'Timed out. Try again.'
+              : (error instanceof Error ? error.message : String(error)),
+            timeout: this.timeoutError,
+          },
           bubbles: true,
           composed: true,
         })
       );
+    } finally {
+      if (timeoutHandle !== undefined) {
+        clearTimeout(timeoutHandle);
+      }
     }
   }
 
@@ -442,6 +486,7 @@ export class RibauntWidget extends HTMLElement {
    * Public API: Reset the widget to initial state
    */
   reset() {
+    this.timeoutError = false;
     this.setState('initial');
     this.setProgress(0);
   }
@@ -490,6 +535,7 @@ declare global {
         'verify-endpoint'?: string;
         'show-warning'?: string | boolean;
         'warning-message'?: string;
+        'solve-timeout'?: string;
         disabled?: string | boolean;
       };
     }

@@ -39,6 +39,8 @@ Then, simply import the widget as a side-effect and use the `<ribaunt-widget>` t
       challenge-endpoint="/api/captcha/challenge"
       verify-endpoint="/api/captcha/verify"
       :show-warning="showWarning"
+      :solve-timeout="15000"
+      :disabled="isDisabled"
       @verify="onVerify"
       @error="onError"
       @state-change="onStateChange"
@@ -59,6 +61,7 @@ import 'ribaunt/widget'
 const widgetRef = ref<RibauntWidgetElement | null>(null)
 const isVerified = ref(false)
 const showWarning = ref(false)
+const isDisabled = ref(false)
 
 const onVerify = (event: CustomEvent<{ solutions: any[] }>) => {
   console.log('Verified!', event.detail.solutions)

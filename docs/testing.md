@@ -3,8 +3,11 @@
 Ribaunt now includes test coverage for the main integration layers:
 
 - server-side challenge creation, solving, verification, and edge cases
+- replay-prevention modes (disabled/local/custom store)
 - the browser solver in `src/solver.ts`
+- browser solver cancellation via `AbortSignal`
 - the web component widget fetch/solve/verify flow
+- widget opt-in solve-timeout failure path and warning animation behavior
 - emitted widget events and disabled-state behavior
 - the React wrapper's prop syncing, event forwarding, and imperative handle
 - built package entry-point smoke tests for ESM, CJS, and browser bundles
@@ -21,9 +24,9 @@ npm test -- --runInBand
 
 | File | Coverage |
 |---|---|
-| `tests/challenge.test.ts` | Server-side challenge flow, malformed tokens, invalid nonces, expiry, and invalid config |
-| `tests/solver.test.ts` | Browser solver token decoding, solving, progress reporting, invalid-token handling, and missing Web Crypto behavior |
-| `tests/widget.test.ts` | Widget fetch/solve/verify flow, emitted events, disabled behavior, and listener lifecycle |
+| `tests/challenge.test.ts` | Server-side challenge flow, malformed tokens, async verification, replay modes, expiry, and invalid config |
+| `tests/solver.test.ts` | Browser solver token decoding, solving, progress reporting, invalid-token handling, cancellation, and missing Web Crypto behavior |
+| `tests/widget.test.ts` | Widget fetch/solve/verify flow, solve-timeout behavior, warning visibility animation, emitted events, disabled behavior, and listener lifecycle |
 | `tests/widget-react.test.tsx` | React wrapper prop syncing, callback/event forwarding, and imperative ref methods |
 | `tests/package-smoke.test.ts` | Built ESM/CJS entry points, browser bundle loading, and package export targets |
 
