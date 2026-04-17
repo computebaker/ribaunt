@@ -64,6 +64,8 @@ You can load the script as an ES module directly in your HTML:
 
 ## Notes
 
+- The recommended challenge endpoint response is `{ challenges: string[] }`.
+- For backwards compatibility, the widget also accepts `{ tokens: string[] }` and raw `string[]`.
 - If you set `disabled` on `<ribaunt-widget>`, it now blocks both user interaction and `startVerification()`.
 - Remove the `disabled` attribute before expecting the widget to verify.
 - If the browser cannot access `crypto.subtle`, the widget will emit an error explaining that HTTPS or `localhost` is required.

@@ -80,6 +80,12 @@ If your older integration used a changing `key` to force a remount when one of t
 
 When `disabled` is set, the wrapped widget blocks both user interaction and `startVerification()`. Remove or clear `disabled` before expecting the widget to run.
 
+### Challenge Endpoint Response Contract
+
+When using `challengeEndpoint`, the recommended response shape is `{ challenges: string[] }`.
+
+For backwards compatibility, the widget also accepts `{ tokens: string[] }` and raw `string[]`.
+
 ### Secure Context Requirement
 
 If the browser does not expose `crypto.subtle`, verification will fail with a clear error indicating that HTTPS or `localhost` is required.

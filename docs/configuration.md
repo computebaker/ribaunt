@@ -51,6 +51,7 @@ import { verifySolution } from 'ribaunt';
 | `replayPrevention` | `'disabled' \| 'local' \| 'remote'` | `'disabled'` | `disabled` keeps backward-compatible behavior, `local` uses in-process memory, `remote` uses your custom store adapter. |
 | `replayStore` | `{ consume(jti, expiresAt): Promise<boolean> }` | `undefined` | Required when `replayPrevention` is `remote`. Should perform atomic consume semantics (for example Redis `SET NX EX`). |
 | `debug` | `boolean` | environment-based | Enables verification warnings for malformed/invalid submissions. |
+| `onWarning` | `(warning) => void` | `undefined` | Optional callback for structured warning events (for example `invalid-token`, `replay-detected`, `invalid-solution`). Useful for telemetry while keeping production logging quiet. |
 
 ### Replay Modes
 
@@ -67,6 +68,36 @@ const isValid = await verifySolution(tokens, solutions, {
       return true;
     },
   },
+});
+```
+
+### Optional Verification Warnings
+
+`verifySolution()` continues to return `false` for invalid inputs, but you can now capture structured warning details without enabling console logs:
+
+```typescript
+await verifySolution(tokens, solutions, {
+  debug: false,
+  onWarning: (warning) => {
+    // warning.reason: invalid-token | expired-token | invalid-solution | replay-detected | configuration-error
+    console.log('captcha-warning', warning.reason, warning.message);
+  },
+});
+```
+
+## Server-Side: `solveChallenge` (sync utility)
+
+`solveChallenge()` is provided mainly for testing/debugging flows and supports optional guardrails to prevent long synchronous runs.
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `maxIterations` | `number` | `undefined` | Optional hard cap on attempted nonces per token. Returns `undefined` if reached. |
+| `maxDurationMs` | `number` | `30000` | Maximum synchronous solve time per token before returning `undefined`. |
+
+```typescript
+const solution = solveChallenge(token, {
+  maxDurationMs: 2000,
+  maxIterations: 500_000,
 });
 ```
 
@@ -91,6 +122,16 @@ Plain LAN URLs such as `http://192.168.x.x` may not expose `crypto.subtle`, espe
 | `warning-message` | `warningMessage` | `string` | `"Enable WASM..."` | Custom message text for the warning banner. |
 | `solve-timeout` | `solveTimeout` | `number\|string` | `undefined` | Optional timeout in milliseconds for solving. If omitted, solving is not automatically timed out. |
 | `disabled` | `disabled` | `boolean\|string` | `false` | Disables user interaction and programmatic verification while set. |
+
+### Challenge Endpoint Response Shapes
+
+The widget currently supports these response formats from `challenge-endpoint`:
+
+- `{ challenges: string[] }` (recommended contract)
+- `{ tokens: string[] }` (legacy compatibility)
+- `string[]` (legacy compatibility)
+
+Invalid or mixed-type token arrays now fail fast with a clear widget error event.
 
 ### Disabled Behavior
 

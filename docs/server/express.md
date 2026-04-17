@@ -56,6 +56,10 @@ app.post('/api/captcha/verify', async (req, res) => {
     // Verify the PoW solution against the original tokens
     const isValid = await verifySolution(tokens, solutions, {
       replayPrevention: 'local',
+      onWarning: (warning) => {
+        // Optional telemetry hook without enabling debug logs
+        console.log('captcha warning', warning.reason, warning.message);
+      },
     });
     
     if (isValid) {
@@ -84,7 +88,9 @@ app.listen(port, () => {
 ```
 
 ## 3. Best Practices
+- **Challenge Response Contract:** Return `{ challenges: string[] }` from your challenge endpoint. `{ tokens: string[] }` and raw `string[]` are still accepted by the widget for compatibility.
 - **Rate Limiting:** Implement IP-based rate limiting on the `/api/captcha/challenge` endpoint using tools like `express-rate-limit` to prevent abuse.
 - **Session Linking:** Instead of simply returning `{ success: true }`, you can return a signed JWT (or set an HTTP-only cookie) that the client must include on subsequent form submissions. This guarantees the form is submitted by a user who recently solved a CAPTCHA.
 - **Input Validation:** Current versions reject invalid `difficulty`, `amount`, and `ttlSeconds` values. Validate untrusted inputs before calling `createChallenge()`.
 - **Replay Mode Selection:** Use `local` replay protection only for single-instance deployments. In serverless or multi-instance deployments, use `remote` with a distributed store adapter.
+- **Verification Observability:** Use the optional `onWarning` callback with `verifySolution()` to capture structured warning reasons (for example `invalid-token`, `replay-detected`) without forcing production console logs.

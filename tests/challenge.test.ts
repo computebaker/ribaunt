@@ -74,6 +74,12 @@ describe('test challenge flow', () => {
         expect(solution).toBeUndefined();
     });
 
+    it('returns undefined when solve guard maxIterations is reached', () => {
+        const [token] = createChallenge(10, 1);
+        const solution = solveChallenge(token, { maxIterations: 1 });
+        expect(solution).toBeUndefined();
+    });
+
     it('marks mismatched nonce arrays as invalid', async () => {
         const tokens = createChallenge(3, 2);
         const verification = await verifySolution(tokens, ['only-one-nonce']);
@@ -98,6 +104,43 @@ describe('test challenge flow', () => {
     it('returns false for malformed tokens during verification', async () => {
         await expect(verifySolution('not-a-jwt', '123', { debug: false })).resolves.toBe(false);
         await expect(verifySolution(['still-not-a-jwt'], ['123'], { debug: false })).resolves.toBe(false);
+    });
+
+    it('emits warning callbacks for malformed tokens without requiring debug logs', async () => {
+        const onWarning = jest.fn();
+
+        await expect(verifySolution('not-a-jwt', '123', {
+            debug: false,
+            onWarning,
+        })).resolves.toBe(false);
+
+        expect(onWarning).toHaveBeenCalledTimes(1);
+        expect(onWarning).toHaveBeenCalledWith(expect.objectContaining({
+            reason: 'invalid-token',
+        }));
+    });
+
+    it('emits replay-detected warning reason when replay protection blocks a token reuse', async () => {
+        const onWarning = jest.fn();
+        const [token] = createChallenge(2, 1, 30);
+        const solution = solveChallenge(token);
+
+        expect(solution).toBeTruthy();
+        await expect(verifySolution(token, solution!.nonce, {
+            replayPrevention: 'local',
+            onWarning,
+            debug: false,
+        })).resolves.toBe(true);
+
+        await expect(verifySolution(token, solution!.nonce, {
+            replayPrevention: 'local',
+            onWarning,
+            debug: false,
+        })).resolves.toBe(false);
+
+        expect(onWarning).toHaveBeenCalledWith(expect.objectContaining({
+            reason: 'replay-detected',
+        }));
     });
 
     it('rejects invalid nonce payload shapes', async () => {

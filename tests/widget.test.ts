@@ -107,6 +107,57 @@ describe('RibauntWidget', () => {
     expect(widget.shadowRoot?.querySelector('.captcha')?.getAttribute('data-state')).toBe('error');
   });
 
+  it('accepts challenge responses shaped as { tokens: string[] }', async () => {
+    const widget = document.createElement('ribaunt-widget');
+    widget.setAttribute('challenge-endpoint', '/challenge');
+    widget.setAttribute('verify-endpoint', '/verify');
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ tokens: ['token-1'] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true }),
+      });
+
+    mockSolveChallenge.mockResolvedValue([{ nonce: '1', hash: 'hash-1' }]);
+
+    document.body.appendChild(widget);
+    (widget.shadowRoot?.querySelector('.captcha') as HTMLDivElement).click();
+
+    await flushPromises();
+    await flushPromises();
+
+    expect(mockSolveChallenge).toHaveBeenCalledWith(['token-1'], expect.any(Function), undefined);
+    expect(widget.shadowRoot?.querySelector('.captcha')?.getAttribute('data-state')).toBe('done');
+  });
+
+  it('emits an error when challenge response contains invalid token values', async () => {
+    const widget = document.createElement('ribaunt-widget');
+    widget.setAttribute('challenge-endpoint', '/challenge');
+
+    const errorHandler = jest.fn();
+    widget.addEventListener('error', errorHandler as EventListener);
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ challenges: ['token-1', 42] }),
+    });
+
+    document.body.appendChild(widget);
+    (widget.shadowRoot?.querySelector('.captcha') as HTMLDivElement).click();
+
+    await flushPromises();
+    await flushPromises();
+
+    expect(errorHandler).toHaveBeenCalledTimes(1);
+    const event = errorHandler.mock.calls[0]?.[0] as CustomEvent<{ error: string }>;
+    expect(event.detail.error).toBe('Challenge response contains invalid token values');
+    expect(widget.shadowRoot?.querySelector('.captcha')?.getAttribute('data-state')).toBe('error');
+  });
+
   it('does not start verification while disabled', async () => {
     const widget = document.createElement('ribaunt-widget');
     widget.setAttribute('challenge-endpoint', '/challenge');

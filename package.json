@@ -1,10 +1,10 @@
 {
   "name": "ribaunt",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A PoW CAPTCHA library that provides stateless and secure user verification",
   "homepage": "https://ribaunt.com",
   "bugs": {
-    "url": "https://github.com/computebaker/ribaunt/issues"
+    "url": "https://github.com/ribaunt/ribaunt/issues"
   },
   "main": "dist/cjs/index.js",
   "types": "dist/index.d.ts",
@@ -27,10 +27,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/computebaker/ribaunt.git"
+    "url": "git+https://github.com/ribaunt/ribaunt.git"
   },
   "license": "EUPL-1.2",
-  "author": "computebaker",
+  "author": "ribaunt",
   "type": "module",
   "scripts": {
     "build": "tsc && tsc --project tsconfig.cjs.json && node scripts/prepare-cjs.mjs",

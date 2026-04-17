@@ -63,6 +63,25 @@ app.listen(3000);
 
 If these values come from config, env, or request input, validate them before calling `createChallenge()`. Current versions reject invalid `difficulty`, `amount`, and `ttlSeconds` values.
 
+The recommended challenge response contract for widget integrations is:
+
+```json
+{ "challenges": ["jwt-token-1", "jwt-token-2"] }
+```
+
+For backwards compatibility, `{ tokens: string[] }` and raw `string[]` are also accepted.
+
+For telemetry, you can capture structured validation warnings without enabling debug logs:
+
+```typescript
+const isValid = await verifySolution(tokens, solutions, {
+  replayPrevention: 'local',
+  onWarning: (warning) => {
+    console.log('captcha warning', warning.reason, warning.message);
+  },
+});
+```
+
 ## 3. Frontend Integration
 
 Browser solving requires a secure context. In practice, use `https://` or `http://localhost` during development. Loading the widget from a plain LAN URL such as `http://192.168.x.x` may fail because the Web Crypto API is not available there.

@@ -62,6 +62,10 @@ export async function POST(req: Request) {
     // Verify the PoW solution against the original tokens
     const isValid = await verifySolution(tokens, solutions, {
       replayPrevention: 'local',
+      onWarning: (warning) => {
+        // Optional telemetry hook without enabling debug logs
+        console.log('captcha warning', warning.reason, warning.message);
+      },
     });
     
     if (isValid) {
@@ -114,7 +118,7 @@ import 'dotenv/config';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifySolution } from 'ribaunt';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -128,6 +132,10 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     
     const isValid = await verifySolution(tokens, solutions, {
       replayPrevention: 'local',
+      onWarning: (warning) => {
+        // Optional telemetry hook without enabling debug logs
+        console.log('captcha warning', warning.reason, warning.message);
+      },
     });
     
     if (isValid) {
@@ -144,8 +152,10 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 ## Notes
 
 - Validate any request- or config-controlled `difficulty`, `amount`, and `ttlSeconds` values before calling `createChallenge()`.
+- Return the challenge response as `{ challenges: string[] }` (recommended contract). Compatibility formats (`{ tokens: string[] }` and `string[]`) are still supported by the widget.
 - Keep `RIBAUNT_SECRET` server-only and never expose it through `NEXT_PUBLIC_` variables.
 - Choose replay strategy per deployment shape:
   - single process: `replayPrevention: 'local'`
   - multi-instance/serverless: `replayPrevention: 'remote'` with a distributed replay store adapter
   - explicit backward compatibility: `replayPrevention: 'disabled'`
+- Use `onWarning` in `verifySolution()` for structured verification telemetry without forcing production logs.

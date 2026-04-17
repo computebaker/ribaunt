@@ -95,6 +95,10 @@ const submitForm = () => {
 
 Since Vue correctly passes properties down, everything is reactive!
 
+When using `challenge-endpoint`, the recommended response shape is `{ challenges: string[] }`.
+
+For backwards compatibility, the widget also accepts `{ tokens: string[] }` and raw `string[]`.
+
 If you bind `disabled`, note that the widget now treats it as a real interaction lock: clicks, keyboard activation, and `startVerification()` are blocked until the prop is cleared.
 
 If the browser does not expose `crypto.subtle`, verification will fail with a clear error indicating that HTTPS or `localhost` is required.

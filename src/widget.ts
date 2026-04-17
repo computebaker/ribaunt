@@ -204,6 +204,44 @@ const RIBAUNT_LOGO = `
 
 export type WidgetState = 'initial' | 'verifying' | 'done' | 'error';
 
+function parseTokenArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    throw new Error('Challenge response must be an array of token strings');
+  }
+
+  if (value.length === 0) {
+    throw new Error('No challenge tokens available');
+  }
+
+  if (!value.every((entry) => typeof entry === 'string' && entry.length > 0)) {
+    throw new Error('Challenge response contains invalid token values');
+  }
+
+  return value;
+}
+
+function parseChallengeTokens(payload: unknown): string[] {
+  if (Array.isArray(payload)) {
+    return parseTokenArray(payload);
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Challenge response must be an object or array of token strings');
+  }
+
+  const record = payload as Record<string, unknown>;
+
+  if ('challenges' in record) {
+    return parseTokenArray(record.challenges);
+  }
+
+  if ('tokens' in record) {
+    return parseTokenArray(record.tokens);
+  }
+
+  throw new Error('Challenge response must include "challenges" or "tokens"');
+}
+
 export class RibauntWidget extends HTMLElement {
   private shadow: ShadowRoot;
   private state: WidgetState = 'initial';
@@ -422,11 +460,11 @@ export class RibauntWidget extends HTMLElement {
       if (challengeEndpoint) {
         const response = await fetch(challengeEndpoint);
         if (!response.ok) throw new Error('Failed to fetch challenge');
-        const data = await response.json() as any;
-        tokens = data.challenges || data.tokens || data;
+        const data = await response.json() as unknown;
+        tokens = parseChallengeTokens(data);
       }
 
-      if (!tokens || !Array.isArray(tokens) || tokens.length === 0) {
+      if (tokens.length === 0) {
         throw new Error('No challenge tokens available');
       }
 

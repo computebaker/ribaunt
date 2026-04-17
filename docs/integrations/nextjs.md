@@ -57,7 +57,7 @@ export default function MyPage() {
 }
 ```
 
-The wrapper also syncs `challengeEndpoint`, `verifyEndpoint`, `showWarning`, `warningMessage`, and `disabled` after mount, so you generally do not need to force remounts when those props change.
+The wrapper also syncs `challengeEndpoint`, `verifyEndpoint`, `showWarning`, `warningMessage`, `solveTimeout`, and `disabled` after mount, so you generally do not need to force remounts when those props change.
 
 ## Step 2: Setting up Next.js Route Handlers (API Routes)
 
@@ -90,6 +90,10 @@ export async function POST(req: Request) {
   
   const isValid = await verifySolution(tokens, solutions, {
     replayPrevention: 'local',
+    onWarning: (warning) => {
+      // Optional structured warning telemetry
+      console.log('captcha warning', warning.reason);
+    },
   });
   
   if (isValid) {
@@ -108,6 +112,8 @@ export async function POST(req: Request) {
 - **Environment Variables**: Make sure your `RIBAUNT_SECRET` is defined in `.env.local` but *do not* prefix it with `NEXT_PUBLIC_` since it must stay on the server.
 - **Secure context**: Browser solving uses Web Crypto, so development should run on `https://` or `http://localhost`. Plain local-network HTTP URLs may fail in some browsers.
 - **Validation**: Validate any dynamic inputs before passing them to `createChallenge()`. Invalid `difficulty`, `amount`, and `ttlSeconds` values now throw.
+- **Challenge endpoint contract**: Prefer returning `{ challenges: string[] }`. Compatibility formats (`{ tokens: string[] }` and raw `string[]`) are still accepted by the widget.
 - **Disabled semantics**: `disabled` now blocks both user interaction and `startVerification()`.
 - **Replay protection**: Use `replayPrevention: 'local'` for single-instance deployments or `replayPrevention: 'remote'` with a distributed store for serverless/multi-instance deployments.
+- **Verification telemetry**: Use `onWarning` in `verifySolution()` to capture structured warning reasons without turning on debug logs.
 - **Timeouts are opt-in**: `solveTimeout`/`solve-timeout` is optional. If omitted, solve attempts are not auto-cancelled.

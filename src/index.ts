@@ -25,6 +25,25 @@ export interface VerifySolutionOptions {
   replayPrevention?: ReplayPreventionMode;
   replayStore?: ReplayStore;
   debug?: boolean;
+  onWarning?: (warning: VerifyWarning) => void;
+}
+
+export type VerifyWarningReason =
+  | 'invalid-token'
+  | 'expired-token'
+  | 'invalid-solution'
+  | 'replay-detected'
+  | 'configuration-error';
+
+export interface VerifyWarning {
+  reason: VerifyWarningReason;
+  message: string;
+  error?: unknown;
+}
+
+export interface SolveChallengeOptions {
+  maxIterations?: number;
+  maxDurationMs?: number;
 }
 
 export class LocalReplayStore implements ReplayStore {
@@ -53,6 +72,7 @@ export class LocalReplayStore implements ReplayStore {
 }
 
 const defaultLocalReplayStore = new LocalReplayStore();
+const DEFAULT_SOLVE_MAX_DURATION_MS = 30_000;
 
 function generateChallenge(length = 8): string {
   const buffer = crypto.randomBytes(length);
@@ -95,12 +115,90 @@ function shouldDebugVerifyErrors(options?: VerifySolutionOptions): boolean {
 }
 
 function logVerifyWarning(message: string, options?: VerifySolutionOptions, error?: unknown): void {
+  const warning: VerifyWarning = {
+    reason: classifyVerifyWarningReason(error),
+    message,
+    error,
+  };
+
+  options?.onWarning?.(warning);
+
   if (!shouldDebugVerifyErrors(options)) {
     return;
   }
 
   const details = error instanceof Error ? error.message : error;
   console.warn(`[ribaunt] ${message}`, details ?? '');
+}
+
+function emitVerifyWarning(
+  reason: VerifyWarningReason,
+  message: string,
+  options?: VerifySolutionOptions,
+  error?: unknown
+): void {
+  options?.onWarning?.({ reason, message, error });
+
+  if (!shouldDebugVerifyErrors(options)) {
+    return;
+  }
+
+  const details = error instanceof Error ? error.message : error;
+  console.warn(`[ribaunt] ${message}`, details ?? '');
+}
+
+function classifyVerifyWarningReason(error: unknown): VerifyWarningReason {
+  if (error && typeof error === 'object' && 'name' in error) {
+    const name = String((error as { name?: unknown }).name);
+
+    if (name === 'TokenExpiredError') {
+      return 'expired-token';
+    }
+
+    if (name === 'JsonWebTokenError' || name === 'NotBeforeError') {
+      return 'invalid-token';
+    }
+  }
+
+  if (error instanceof Error && error.message.includes('replayStore')) {
+    return 'configuration-error';
+  }
+
+  return 'invalid-token';
+}
+
+function normalizeMaxIterations(options?: SolveChallengeOptions): number | undefined {
+  if (options?.maxIterations === undefined) {
+    return undefined;
+  }
+
+  if (!Number.isFinite(options.maxIterations)) {
+    return undefined;
+  }
+
+  const normalized = Math.floor(options.maxIterations);
+  if (normalized < 1) {
+    return 1;
+  }
+
+  return normalized;
+}
+
+function normalizeMaxDurationMs(options?: SolveChallengeOptions): number {
+  if (options?.maxDurationMs === undefined) {
+    return DEFAULT_SOLVE_MAX_DURATION_MS;
+  }
+
+  if (!Number.isFinite(options.maxDurationMs)) {
+    return DEFAULT_SOLVE_MAX_DURATION_MS;
+  }
+
+  const normalized = Math.floor(options.maxDurationMs);
+  if (normalized < 1) {
+    return 1;
+  }
+
+  return normalized;
 }
 
 function getReplayStore(options?: VerifySolutionOptions): ReplayStore | undefined {
@@ -193,16 +291,30 @@ export function createChallenge(
   return challenges;
 }
 
-function solveSingleChallenge(token: ChallengeToken): ChallengeSolution | undefined {
+function solveSingleChallenge(
+  token: ChallengeToken,
+  options?: SolveChallengeOptions
+): ChallengeSolution | undefined {
   try {
     const payload = jwt.decode(token) as ChallengeTokenPayload | null;
     if (!payload) return undefined;
 
     const { challenge, difficulty } = payload;
     const prefix = '0'.repeat(difficulty);
+    const maxIterations = normalizeMaxIterations(options);
+    const maxDurationMs = normalizeMaxDurationMs(options);
+    const startedAt = Date.now();
 
     let nonce = 0;
     while (true) {
+      if (maxIterations !== undefined && nonce >= maxIterations) {
+        return undefined;
+      }
+
+      if (Date.now() - startedAt >= maxDurationMs) {
+        return undefined;
+      }
+
       const hash = crypto
         .createHash('sha256')
         .update(`${challenge}${nonce}`)
@@ -225,6 +337,7 @@ async function verifySingleSolution(
   options?: VerifySolutionOptions
 ): Promise<boolean> {
   if (nonce === undefined || nonce === null) {
+    emitVerifyWarning('invalid-solution', 'verifySolution received an empty nonce', options);
     return false;
   }
 
@@ -233,7 +346,10 @@ async function verifySingleSolution(
     const payload = jwt.verify(token, getSecret()) as ChallengeTokenPayload;
 
     const now = Math.floor(Date.now() / 1000);
-    if (payload.expires < now) return false;
+    if (payload.expires < now) {
+      emitVerifyWarning('expired-token', 'verifySolution rejected an expired challenge token', options);
+      return false;
+    }
 
     const nonceValue = typeof nonce === 'number' ? String(nonce) : nonce;
     const hash = crypto
@@ -244,12 +360,14 @@ async function verifySingleSolution(
     const prefix = '0'.repeat(payload.difficulty);
     const isValid = hash.startsWith(prefix);
     if (!isValid) {
+      emitVerifyWarning('invalid-solution', 'verifySolution rejected an invalid nonce', options);
       return false;
     }
 
     if (replayStore && payload.jti) {
       const consumed = await replayStore.consume(payload.jti, payload.expires);
       if (!consumed) {
+        emitVerifyWarning('replay-detected', 'verifySolution rejected a replayed token', options);
         return false;
       }
     }
@@ -265,18 +383,28 @@ async function verifySingleSolution(
  * Solves one or more PoW challenges encoded in JWT tokens.
  *
  * @param token - The JWT challenge token or an array of tokens
+ * @param options - Optional guardrails for test/debug usage (`maxIterations`, `maxDurationMs`)
  * @returns The nonce/hash pair for single input or an array of them for multiple tokens
  */
 export function solveChallenge(token: ChallengeToken): ChallengeSolution | undefined;
+export function solveChallenge(
+  token: ChallengeToken,
+  options?: SolveChallengeOptions
+): ChallengeSolution | undefined;
 export function solveChallenge(token: ChallengeToken[]): ChallengeSolution[] | undefined;
 export function solveChallenge(
-  token: ChallengeToken | ChallengeToken[]
+  token: ChallengeToken[],
+  options?: SolveChallengeOptions
+): ChallengeSolution[] | undefined;
+export function solveChallenge(
+  token: ChallengeToken | ChallengeToken[],
+  options?: SolveChallengeOptions
 ): ChallengeSolution | ChallengeSolution[] | undefined {
   if (Array.isArray(token)) {
     const solutions: ChallengeSolution[] = [];
 
     for (const singleToken of token) {
-      const solution = solveSingleChallenge(singleToken);
+      const solution = solveSingleChallenge(singleToken, options);
       if (!solution) {
         return undefined;
       }
@@ -287,7 +415,7 @@ export function solveChallenge(
     return solutions;
   }
 
-  const solution = solveSingleChallenge(token);
+  const solution = solveSingleChallenge(token, options);
   return solution;
 }
 

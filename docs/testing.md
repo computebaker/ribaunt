@@ -4,10 +4,13 @@ Ribaunt now includes test coverage for the main integration layers:
 
 - server-side challenge creation, solving, verification, and edge cases
 - replay-prevention modes (disabled/local/custom store)
+- optional verification warning callbacks (`onWarning`) and warning reasons
 - the browser solver in `src/solver.ts`
 - browser solver cancellation via `AbortSignal`
+- server-side solve guardrails (`maxIterations`, `maxDurationMs`)
 - the web component widget fetch/solve/verify flow
 - widget opt-in solve-timeout failure path and warning animation behavior
+- widget challenge payload parsing for supported response shapes and malformed payload rejection
 - emitted widget events and disabled-state behavior
 - the React wrapper's prop syncing, event forwarding, and imperative handle
 - built package entry-point smoke tests for ESM, CJS, and browser bundles
